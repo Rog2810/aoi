@@ -86,6 +86,34 @@ tests/            Vitest unit tests
 3. Before committing, in a second terminal: `npm run typecheck` then `npm test`.
 4. Commit with Git (section 7).
 
+### Updating repo from Claude zip downloads
+
+- Download and extract zip folder
+- Run in terminal:
+```powershell
+git status                      # should say "nothing to commit, working tree clean"
+git switch -c feature/home-widgets
+
+Expand-Archive -Path $HOME\Downloads\aoi.zip -DestinationPath $HOME\Downloads\aoi-new -Force
+Copy-Item -Path $HOME\Downloads\aoi-new\aoi\* -Destination . -Recurse -Force
+Remove-Item src\fixtures\tasks.ts
+
+git status          # lists every file that changed or is new
+git diff            # shows the exact line changes (or use the Source Control panel in VS Code)
+npm run typecheck
+npm test
+npm run dev         # make sure everthing looks good
+
+git add .
+git commit -m "Add remaining home widgets, navigation and sample data"
+git switch main
+git merge feature/home-widgets
+git branch -d feature/home-widgets
+```
+
+- If something looks wrong, ```git restore .``` You will need to delete the new files
+
+
 ### Rules this code follows (keep following them)
 
 - **Logic lives in `src/lib`, not in components.** A function there takes values and returns values, so it is easy to test.
