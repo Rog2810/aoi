@@ -1,0 +1,12 @@
+.grid { display: grid; gap: var(--space); grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.widget { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space); min-width: 0; max-height: 34rem; overflow: auto; scrollbar-gutter: stable; }
+.widget h2 { margin: 0 0 8px; font-size: 1.1em; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 8px; text-align: center; }
+.cell { min-height: 36px; padding: 0; background: transparent; border-color: transparent; }
+.muted { color: var(--muted); }
+.today { outline: 2px dashed var(--text); outline-offset: -2px; }
+.selected { background: var(--primary); color: var(--bg); font-weight: 700; }
+.tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.task { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.title { overflow-wrap: anywhere; font-weight: 600; }

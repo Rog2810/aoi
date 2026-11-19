@@ -1,0 +1,11 @@
+:root { --bg: #fff; --surface: #f7f6f3; --border: #e3e2de; --text: #1f1f1f; --muted: #6b6b6b; --primary: #2f5bea; --focus: #2f5bea; --radius: 8px; --space: 12px; --motion: 180ms; --font-scale: 1; }
+@media (prefers-color-scheme: dark) { :root { --bg: #191919; --surface: #252525; --border: #3a3a3a; --text: #ececec; --muted: #a0a0a0; --primary: #7b9bff; --focus: #7b9bff; } }
+@media (prefers-reduced-motion: reduce) { :root { --motion: 0ms; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: calc(16px * var(--font-scale)) / 1.5 system-ui, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: var(--space); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; min-height: 32px; cursor: pointer; transition: background var(--motion); }
+button:hover { background: var(--border); }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 8px; top: 8px; background: var(--bg); padding: 8px; z-index: 10; }
