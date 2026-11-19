@@ -57,3 +57,18 @@ export interface TimeboxEntry {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CalendarEvent extends Versioned {
+  title: string;
+  date: string; // first occurrence, "YYYY-MM-DD"
+  startMinute: number;
+  endMinute: number;
+  recurrence: "never" | "daily" | "weekly" | "monthly"; // richer rules ("every Monday 8:30") can extend this later
+  overlapPolicy: "exclusive" | "allows-parallel-work"; // always chosen by the user, never inferred
+}
+
+/** Repeats forever and has no deadline; completing it resets "days since" instead of removing it. */
+export interface Reminder extends Versioned {
+  title: string;
+  lastCompletedDate: string;
+}

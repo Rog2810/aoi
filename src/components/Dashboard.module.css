@@ -10,3 +10,33 @@
 .tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .task { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .title { overflow-wrap: anywhere; font-weight: 600; }
+.wide { grid-column: 1 / -1; }
+.h3 { margin: 8px 0 4px; font-size: 1em; }
+.plain { margin: 0; padding-left: 1.2em; }
+.tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.tabOn { font-weight: 700; border-bottom: 3px solid var(--primary); }
+.nav { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; margin: 0; padding: var(--space); }
+.nav a { color: var(--text); }
+.nav a[aria-current="page"] { font-weight: 700; text-decoration: underline; }
+.soon { color: var(--muted); }
+.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.mark { font-size: 0.7em; }
+.tbScroll { max-height: 20rem; overflow-y: auto; scrollbar-gutter: stable; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.tbBody { position: relative; }
+.tbHour { position: absolute; left: 0; right: 0; height: 40px; border-top: 1px solid var(--border); }
+.tbHour::after { content: ""; position: absolute; left: 4.5rem; right: 0; top: 50%; border-top: 1px dotted var(--border); }
+.tbLabel { position: absolute; left: 4px; top: 2px; font-size: 0.75em; color: var(--muted); }
+.tbBlock { position: absolute; left: 5rem; right: 4px; overflow: hidden; padding: 2px 6px; border-radius: 6px; font-size: 0.8em; background: var(--surface); transition: background var(--motion); }
+.tbBlock:hover { background: var(--border); }
+.tbEvent { border: 1px solid var(--text); border-left-width: 6px; }
+.tbSession { border: 2px dashed var(--text); }
+.tbNow { position: absolute; left: 0; right: 0; border-top: 2px solid var(--primary); z-index: 3; pointer-events: none; }
+.rail { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
+.remCard { flex: 0 0 11rem; scroll-snap-align: start; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); padding: 8px; }
+.remCard h3 { margin: 0 0 4px; font-size: 1em; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sw { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: middle; margin-right: 6px; border: 1px solid var(--text); }
+.swToday { border: 2px dashed var(--text); }
+.swSel { background: var(--primary); }
+.swEvent { border-left-width: 6px; }
+.swSession { border: 2px dashed var(--text); }

@@ -86,34 +86,6 @@ tests/            Vitest unit tests
 3. Before committing, in a second terminal: `npm run typecheck` then `npm test`.
 4. Commit with Git (section 7).
 
-### Updating repo from Claude zip downloads
-
-- Download and extract zip folder
-- Run in terminal:
-```powershell
-git status                      # should say "nothing to commit, working tree clean"
-git switch -c feature/home-widgets
-
-Expand-Archive -Path $HOME\Downloads\aoi.zip -DestinationPath $HOME\Downloads\aoi-new -Force
-Copy-Item -Path $HOME\Downloads\aoi-new\aoi\* -Destination . -Recurse -Force
-Remove-Item src\fixtures\tasks.ts
-
-git status          # lists every file that changed or is new
-git diff            # shows the exact line changes (or use the Source Control panel in VS Code)
-npm run typecheck
-npm test
-npm run dev         # make sure everthing looks good
-
-git add .
-git commit -m "Add remaining home widgets, navigation and sample data"
-git switch main
-git merge feature/home-widgets
-git branch -d feature/home-widgets
-```
-
-- If something looks wrong, ```git restore .``` You will need to delete the new files
-
-
 ### Rules this code follows (keep following them)
 
 - **Logic lives in `src/lib`, not in components.** A function there takes values and returns values, so it is easy to test.
@@ -128,7 +100,7 @@ git branch -d feature/home-widgets
 
 **Change colors or spacing.** Edit the variables at the top of `src/app/globals.css`. The `@media (prefers-color-scheme: dark)` block holds the dark-mode values.
 
-**Edit the sample tasks.** `src/fixtures/tasks.ts`. The due dates are fixed (November/December 2026), so as real time passes they will all become "overdue". Change the dates when you want fresh-looking data.
+**Edit the sample data.** `src/fixtures/sample.ts`. Every date there is an offset from today (for example `9` means nine days from now), so the demo never goes stale. The same file holds the sample events, reminders, sessions and timebox entries.
 
 **Add a pure function and a test (the safest way to learn).**
 
@@ -395,6 +367,6 @@ git tag            # list tags
 
 ## 9. What exists and what is deferred
 
-**Built:** Home page with a month calendar (Monday or Sunday week start, stable six-row grid) and a task list showing the absolute due date plus exact days remaining, with Complete and Undo; pure logic for dates, calendars, sessions, layout overlap validation and layout share codes (with unit tests); Dexie schema and task repository; PWA manifest, offline page and service worker; the app name in one config file.
+**Built:** Home page with a main menu generated from `src/config/navigation.ts`, and widgets for: month calendar (Monday or Sunday start, stable six-row grid, task-due markers), daily timebox (read-only; hour labels, dotted half-hour lines, current-time line updated every minute, previous/next day), tasks and events (accessible tabs; absolute due dates plus exact days remaining; Complete and Undo), sessions (planned, done and remaining minutes), reminders (sideways-scrolling cards with "days since last done"), daily/weekly missions (sample text) and a legend. Pure logic for dates, calendars, events, sessions, layout overlap validation and layout share codes, with unit tests. Dexie schema and task repository. PWA manifest, offline page and service worker.
 
-**Deferred (not built yet):** the other pages (task list board, task detail, events, timebox, layouts, settings); drag, resize and the layout editor; responsive layout projection; theme, palette and typography settings; reminders and daily/weekly missions; development-state switcher; saving the UI to IndexedDB; ESLint, Prettier, Playwright and axe tests; PNG app icons; authentication and cloud sync (Supabase); automatic scheduling.
+**Deferred (not built yet):** the other pages (task board, task detail, events, timebox, layouts, settings); clicking a timebox block to open its item; drag, resize and the layout editor; responsive layout projection; animated month changes; theme, palette and typography settings; saving the UI to IndexedDB; the development-state switcher; real daily/weekly mission logic; ESLint, Prettier, Playwright and axe tests; PNG app icons; authentication and cloud sync (Supabase); automatic scheduling.
