@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { APP_NAME } from "@/config/app";
 import { getRepositories } from "@/db/db";
 import type { TaskStatus } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
+import type { WeekStart } from "@/lib/calendar";
 import { toDateKey } from "@/lib/dates";
 import CalendarWidget from "./CalendarWidget";
 import { DailyWeeklyWidget, LegendWidget, RemindersWidget, SessionsWidget } from "./MiniWidgets";
+import Nav from "./Nav";
 import TasksEventsWidget from "./TasksEventsWidget";
 import TimeboxWidget from "./TimeboxWidget";
 import { usePersistentRecords } from "./usePersistentRecords";
@@ -20,6 +23,7 @@ export default function Dashboard() {
 
 /** Owns the shared data once, so any number of widgets (even duplicates) see the same records. */
 function Board({ now }: { now: Date }) {
+  const weekStart: WeekStart = 1; // TODO(settings): read Monday/Sunday from the preferences repository
   const data = useMemo(() => sampleData(now), [now]);
   const repos = getRepositories();
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
@@ -43,14 +47,20 @@ function Board({ now }: { now: Date }) {
           Changes could not be saved on this device. Aoi is running from memory, so anything you change will be lost when you close this tab.
         </p>
       )}
-      <div className={styles.grid}>
-        <CalendarWidget now={now} tasks={tasks} />
-        <TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={data.sessions} tasks={tasks} />
-        <TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} />
-        <SessionsWidget sessions={data.sessions} tasks={tasks} />
-        <DailyWeeklyWidget />
-        <LegendWidget />
-        <RemindersWidget reminders={reminders} now={now} onDone={markDone} />
+      <div className={styles.home}>
+        <div className={styles.aMenu}>
+          <div className={styles.bar}>
+            <h1 className={styles.brand}>{APP_NAME}</h1>
+            <Nav />
+          </div>
+        </div>
+        <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} /></div>
+        <div className={styles.aLeg}><LegendWidget /></div>
+        <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} /></div>
+        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={data.sessions} tasks={tasks} /></div>
+        <div className={`${styles.aRem} ${styles.capped}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
+        <div className={`${styles.aDw} ${styles.capped}`}><DailyWeeklyWidget /></div>
+        <div className={`${styles.aSes} ${styles.capped}`}><SessionsWidget sessions={data.sessions} tasks={tasks} /></div>
       </div>
     </>
   );

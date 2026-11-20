@@ -1,4 +1,5 @@
 "use client";
+import { CATEGORIES, UNCATEGORIZED } from "@/config/categories";
 import type { Reminder, Session, SessionStatus, Task } from "@/domain/types";
 import { daysRemaining } from "@/lib/dates";
 import { remainingMinutes } from "@/lib/sessions";
@@ -49,7 +50,11 @@ export function SessionsWidget({ sessions, tasks }: { sessions: Session[]; tasks
   );
 }
 
-const list = (items: string[]) => <ul className={styles.plain}>{items.map((i) => <li key={i}>{i}</li>)}</ul>;
+const cards = (items: string[]) => (
+  <div className={styles.cardGrid}>
+    {items.map((i) => <div key={i} className={styles.card}>{i}</div>)}
+  </div>
+);
 
 export function DailyWeeklyWidget() {
   return (
@@ -57,8 +62,8 @@ export function DailyWeeklyWidget() {
       <TabControl
         label="Daily or weekly missions"
         tabs={[
-          { id: "daily", label: "Daily", content: list(["Complete one work session", "Check tomorrow's deadlines"]) },
-          { id: "weekly", label: "Weekly", content: list(["Finish one subtask ahead of its due date"]) },
+          { id: "daily", label: "Daily", content: cards(["Complete one work session", "Check tomorrow's deadlines", "Log today's study time", "Plan one session for tomorrow"]) },
+          { id: "weekly", label: "Weekly", content: cards(["Finish one subtask ahead of its due date", "Review next week's deadlines", "Clear one overdue task"]) },
         ]}
       />
       <p className={styles.muted}>Sample missions. Random selection and weekly themes are not built yet.</p>
@@ -70,12 +75,11 @@ export function LegendWidget() {
   return (
     <WidgetFrame title="Legend" id="leg-h">
       <ul className={styles.legend}>
-        <li>• Task due on that day (calendar)</li>
-        <li><span className={`${styles.sw} ${styles.swToday}`} />Today</li>
-        <li><span className={`${styles.sw} ${styles.swSel}`} />Selected day</li>
-        <li><span className={`${styles.sw} ${styles.swEvent}`} />Event (thick left edge)</li>
-        <li><span className={`${styles.sw} ${styles.swSession}`} />Session (dashed outline)</li>
+        {[...CATEGORIES, UNCATEGORIZED].map((c) => (
+          <li key={c.id}><span className={styles.sw} style={{ background: c.color }} />{c.name}</li>
+        ))}
       </ul>
+      <p className={styles.muted}>A line runs from each task's start date to its due date.</p>
     </WidgetFrame>
   );
 }

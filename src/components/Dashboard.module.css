@@ -41,3 +41,45 @@
 .swEvent { border-left-width: 6px; }
 .swSession { border: 2px dashed var(--text); }
 .error { border: 2px solid var(--text); border-radius: var(--radius); padding: 8px; margin-bottom: var(--space); }
+
+/* ---- Home layout, following the mockup ---- */
+.widget { height: 100%; max-height: none; display: flex; flex-direction: column; }
+.home { display: grid; gap: var(--space); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.3fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "menu menu menu time" "cal cal leg time" "cal cal tasks time" "rem dw ses time"; }
+.aMenu { grid-area: menu; } .aCal { grid-area: cal; } .aLeg { grid-area: leg; } .aTasks { grid-area: tasks; }
+.aTime { grid-area: time; } .aRem { grid-area: rem; } .aDw { grid-area: dw; } .aSes { grid-area: ses; }
+.home > div { min-width: 0; }
+.fill { position: relative; min-height: 14rem; }
+.fill > section { position: absolute; inset: 0; overflow: auto; }
+.capped > section { max-height: 16rem; }
+@media (max-width: 1000px) {
+  .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "menu" "cal" "leg" "tasks" "time" "rem" "dw" "ses"; }
+}
+
+.bar { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space); }
+.brand { margin: 0; font-size: 1.1em; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* calendar */
+.calTable { flex: 1; display: grid; grid-template-rows: auto repeat(6, minmax(0, 1fr)); margin-top: 8px; }
+.calHead { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--muted); font-weight: 600; }
+.week { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); }
+.dayCell { padding: 2px 4px; min-width: 0; }
+.dayNum { display: inline-block; min-width: 1.7em; text-align: center; border-radius: 999px; font-size: 0.9em; }
+.todayNum { outline: 2px dashed var(--text); }
+.lines { position: absolute; left: 0; right: 0; bottom: 6px; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 6px; row-gap: 3px; pointer-events: none; }
+.line { margin: 0 2px; }
+.legend { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
+
+/* timebox */
+.tbHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.tbDay { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.dayCircle { display: inline-grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 2px solid var(--text); border-radius: 50%; font-weight: 700; }
+.counts { display: flex; gap: 6px; }
+.tbCols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.tbCol { position: relative; }
+.tbHour::after { left: 3rem; }
+.tbBlock { left: 3.5rem; }
+
+/* cards for daily/weekly */
+.cardGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 8px; }
+.card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); padding: 8px; overflow-wrap: anywhere; }

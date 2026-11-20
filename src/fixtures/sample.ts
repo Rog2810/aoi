@@ -10,12 +10,15 @@ export function sampleData(today: Date) {
   const task = (id: string, title: string, due: number, estimateMinutes: number, extra: Partial<Task> = {}): Task => ({
     id, title, dueDate: addDays(d0, due), estimateMinutes, categoryIds: [], tagIds: [], status: "not-started", ...base, ...extra,
   });
+  const stamp = (n: number) => `${addDays(d0, n)}T12:00:00.000Z`; // creation date = where the calendar line starts
   const tasks: Task[] = [
-    task("t1", "Chemistry lab report", 9, 180, { preferredSessionMinutes: 45, status: "in-progress" }),
-    task("t2", "Draft methods section", 5, 60, { parentId: "t1" }),
-    task("t3", "Reply to advisor email", 0, 15),
-    task("t4", "Read chapter 6", -3, 90),
-    task("t5", "Final project outline", 21, 120, { preferredSessionMinutes: 60 }),
+    task("t1", "Chemistry lab report", 9, 180, { preferredSessionMinutes: 45, status: "in-progress", categoryIds: ["school"], createdAt: stamp(-6) }),
+    task("t2", "Draft methods section", 5, 60, { parentId: "t1", categoryIds: ["school"], createdAt: stamp(-2) }),
+    task("t3", "Reply to advisor email", 0, 15, { categoryIds: ["work"], createdAt: stamp(-1) }),
+    task("t4", "Read chapter 6", -3, 90, { categoryIds: ["school"], createdAt: stamp(-8) }),
+    task("t5", "Final project outline", 21, 120, { preferredSessionMinutes: 60, categoryIds: ["school"], createdAt: stamp(-4) }),
+    task("t6", "Book dentist appointment", 6, 20, { categoryIds: ["personal"], createdAt: stamp(-3) }),
+    task("t7", "Renew library books", 2, 10, { categoryIds: ["personal"], createdAt: stamp(-5) }),
   ];
   // Partial session t1:s2 stays ONE session: 20 of 45 minutes done.
   const sessions: Session[] = [...generateSessions("t1", 180, 45, at), ...generateSessions("t5", 120, 60, at)].map((s): Session =>
