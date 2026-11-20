@@ -64,7 +64,7 @@ src/
     layout.tsx      Wraps every page; skip link; registers the service worker
     page.tsx        Home ("/")
     globals.css     Design tokens: colors, spacing, radius, motion, font scale
-  components/     React UI (Dashboard + its .module.css, PwaRegister)
+  components/     React UI: Dashboard (owns the shared data), one file per widget, usePersistentRecords (loads and saves through the repositories)
   lib/            Pure logic, no React: dates, calendar, sessions, layout, shareCode
   domain/types.ts Shapes of the data: Task, Session, CompletionRecord, TimeboxEntry
   db/db.ts        Dexie (IndexedDB) schema and repositories. Only place that touches the database
@@ -206,9 +206,9 @@ Many people simply use the browser instead: press `F12`, open **Sources**, and p
 
 ## 6. Data, offline mode, PWA and environment variables
 
-**Where data lives.** The database layer (`src/db`) is ready, but the Home screen currently uses sample data from `src/fixtures` and **does not save to IndexedDB yet**. Once saving is wired in, user data lives only in that browser on that device, and **clearing browser site data deletes it**. Cloud sync is planned; until it exists, anything not exported is local-only.
+**Where data lives.** Tasks and reminders are saved in your browser's IndexedDB through repositories (`src/db/db.ts`) and the `usePersistentRecords` hook; components never call the database directly. On first run the sample data is copied in as starting records. Sessions, events and timebox entries are still sample data. Data lives only in that browser on that device, and **clearing browser site data deletes it**. Cloud sync is planned; until it exists, anything not exported is local-only.
 
-**Inspect IndexedDB (once the UI writes to it).** In Chrome or Edge press `F12` → **Application** → **Storage → IndexedDB** → `aoi`. You can view and delete rows there. The database appears only after something opens it.
+**Inspect IndexedDB.** In Chrome or Edge press `F12` → **Application** → **Storage → IndexedDB** → `aoi` → `tasks` or `reminders`. You can view and edit rows there. To start over (and re-copy the sample data), right-click `aoi` → **Delete database**, then reload. Changing `src/fixtures/sample.ts` does not affect records that were already saved.
 
 **Test offline mode.** The service worker only registers in a production build:
 
@@ -339,6 +339,61 @@ A browser window opens once to sign in (passwords typed in the terminal are not 
 
 Avoid `git reset --hard` and `git push --force` until you are comfortable; they can destroy work.
 
+### Applying files and updates from Claude
+
+Rule: **commit or stash your own work first.** `Copy-Item` and `Expand-Archive` overwrite files silently, so anything uncommitted in those files is gone.
+
+**A. Changed files only (preferred)**
+
+```powershell
+git status                                   # must say "working tree clean"
+git switch -c update/short-description
+
+# Replace each listed file. In VS Code: open it, Ctrl+A, paste, save.
+# New file: right-click the folder in the Explorer -> New File, then paste.
+# Or copy a downloaded file straight in:
+Copy-Item $HOME\Downloads\Dashboard.tsx src\components\Dashboard.tsx -Force
+Remove-Item src\fixtures\old-file.ts       # only if told a file was removed
+
+git status                                   # only the expected files should be listed
+git diff                                     # red lines = what disappeared; re-add any of YOUR edits you want to keep
+npm run typecheck
+npm test
+git add .
+git commit -m "Describe the change"
+git switch main
+git merge update/short-description
+git branch -d update/short-description
+```
+
+Working on a branch means `git restore .` (before committing) or `git switch main` (after) puts you back exactly as you were. If you have edited a file I am replacing, tell me or paste it first so my version includes your changes.
+
+**B. A whole project zip (rare)**
+
+Extracting a zip over the project would overwrite your edits, so apply it to a branch that starts from the *last zip you applied* and let Git merge the two sets of changes.
+
+```powershell
+# One time: tag the commit that matches the last zip you applied
+git log --oneline
+git tag claude-baseline-1 <short-commit-id>
+
+# Each new zip:
+git status                                   # clean first
+git switch -c update/claude-2 claude-baseline-1
+Expand-Archive -Path $HOME\Downloads\aoi.zip -DestinationPath $HOME\Downloads\aoi-new -Force
+Copy-Item -Path $HOME\Downloads\aoi-new\aoi\* -Destination . -Recurse -Force
+git add .
+git commit -m "Apply Claude update 2"
+git tag claude-baseline-2
+
+git diff --stat main...update/claude-2       # preview what it brings in
+git switch main
+git merge update/claude-2
+git branch -d update/claude-2
+```
+
+If both sides edited the same lines, `git merge` stops with `CONFLICT`: fix it as described under "Resolving a merge conflict", then `git add` the file and `git commit`. `git merge --abort` backs out. Next time use `claude-baseline-2` as the starting point.
+
 ### Milestone tags
 
 ```powershell
@@ -367,6 +422,6 @@ git tag            # list tags
 
 ## 9. What exists and what is deferred
 
-**Built:** Home page with a main menu generated from `src/config/navigation.ts`, and widgets for: month calendar (Monday or Sunday start, stable six-row grid, task-due markers), daily timebox (read-only; hour labels, dotted half-hour lines, current-time line updated every minute, previous/next day), tasks and events (accessible tabs; absolute due dates plus exact days remaining; Complete and Undo), sessions (planned, done and remaining minutes), reminders (sideways-scrolling cards with "days since last done"), daily/weekly missions (sample text) and a legend. Pure logic for dates, calendars, events, sessions, layout overlap validation and layout share codes, with unit tests. Dexie schema and task repository. PWA manifest, offline page and service worker.
+**Built:** Home page with a main menu generated from `src/config/navigation.ts`, and widgets for: month calendar (Monday or Sunday start, stable six-row grid, task-due markers), daily timebox (read-only; hour labels, dotted half-hour lines, current-time line updated every minute, previous/next day), tasks and events (accessible tabs; absolute due dates plus exact days remaining; Complete and Undo), sessions (planned, done and remaining minutes), reminders (sideways-scrolling cards with "days since last done"), daily/weekly missions (sample text) and a legend. Pure logic for dates, calendars, events, sessions, layout overlap validation and layout share codes, with unit tests. Tasks and reminders saved to IndexedDB (Dexie) through repositories and the `usePersistentRecords` hook. PWA manifest, offline page and service worker.
 
-**Deferred (not built yet):** the other pages (task board, task detail, events, timebox, layouts, settings); clicking a timebox block to open its item; drag, resize and the layout editor; responsive layout projection; animated month changes; theme, palette and typography settings; saving the UI to IndexedDB; the development-state switcher; real daily/weekly mission logic; ESLint, Prettier, Playwright and axe tests; PNG app icons; authentication and cloud sync (Supabase); automatic scheduling.
+**Deferred (not built yet):** the other pages (task board, task detail, events, timebox, layouts, settings); clicking a timebox block to open its item; drag, resize and the layout editor; responsive layout projection; animated month changes; theme, palette and typography settings; saving sessions, events and timebox entries to IndexedDB; the development-state switcher; real daily/weekly mission logic; ESLint, Prettier, Playwright and axe tests; PNG app icons; authentication and cloud sync (Supabase); automatic scheduling.
