@@ -1,18 +1,18 @@
 import Dexie, { type Table } from "dexie";
-import type { CompletionRecord, Session, Task, TimeboxEntry } from "../domain/types";
+import type { CompletionRecord, Reminder, Session, Task, TimeboxEntry } from "../domain/types";
 import type { LayoutConfig } from "../lib/shareCode";
 
-/** Only repositories import this. React components receive data through services/state, never Dexie. */
+/** Only this file knows about Dexie/IndexedDB. Everything else talks to repositories. */
 export class AoiDb extends Dexie {
   tasks!: Table<Task, string>;
+  reminders!: Table<Reminder, string>;
   sessions!: Table<Session, string>;
   completions!: Table<CompletionRecord, string>;
   timebox!: Table<TimeboxEntry, string>;
   layouts!: Table<{ id: string; config: LayoutConfig }, string>;
 
-  constructor() {
-    super("aoi");
-    // Add this.version(2).stores({...}).upgrade(...) for every later schema change; never edit version 1.
+  constructor(name = "aoi") {
+    super(name);
     this.version(1).stores({
       tasks: "id, dueDate, status, parentId",
       sessions: "id, taskId, status",
@@ -20,18 +20,40 @@ export class AoiDb extends Dexie {
       timebox: "id, date",
       layouts: "id",
     });
+    // Never edit an older version: browsers that already have it would not upgrade correctly.
+    // Add a new version instead, listing only the tables that are new or changed.
+    this.version(2).stores({ reminders: "id" });
   }
 }
 
-export interface TaskRepository {
-  list(): Promise<Task[]>;
-  put(task: Task): Promise<void>;
+export interface Repository<T extends { id: string }> {
+  list(): Promise<T[]>;
+  count(): Promise<number>;
+  put(item: T): Promise<void>;
+  bulkPut(items: T[]): Promise<void>;
   remove(id: string): Promise<void>;
 }
+export type TaskRepository = Repository<Task>;
+export type ReminderRepository = Repository<Reminder>;
 
-/** EXTENSION POINT: a future CloudRepository / SyncQueue wraps these writes to track unsynced revisions. */
-export const createTaskRepository = (db: AoiDb = new AoiDb()): TaskRepository => ({
-  list: () => db.tasks.orderBy("dueDate").toArray(),
-  put: async (task) => void (await db.tasks.put(task)),
-  remove: (id) => db.tasks.delete(id),
+/** EXTENSION POINT: a future SyncQueue/CloudRepository wraps these writes to track unsynced revisions. */
+const repo = <T extends { id: string }>(table: Table<T, string>): Repository<T> => ({
+  list: () => table.toArray(),
+  count: () => table.count(),
+  put: async (item) => {
+    await table.put(item);
+  },
+  bulkPut: async (items) => {
+    await table.bulkPut(items);
+  },
+  remove: (id) => table.delete(id),
 });
+
+export const createRepositories = (db: AoiDb = new AoiDb()) => ({
+  tasks: repo(db.tasks),
+  reminders: repo(db.reminders),
+});
+
+let shared: ReturnType<typeof createRepositories> | undefined;
+/** One database connection per browser tab. Call only in the browser (after mount). */
+export const getRepositories = () => (shared ??= createRepositories());
