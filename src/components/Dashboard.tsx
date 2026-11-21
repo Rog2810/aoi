@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { APP_NAME } from "@/config/app";
 import { getRepositories } from "@/db/db";
-import type { TaskStatus } from "@/domain/types";
+import type { Session, TaskStatus } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import type { WeekStart } from "@/lib/calendar";
 import { toDateKey } from "@/lib/dates";
@@ -30,7 +30,8 @@ function Board({ now }: { now: Date }) {
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
   const { items: sessions, status: sessionState, save: saveSession } = usePersistentRecords(repos.sessions, () => data.sessions);
-  const states = [taskState, reminderState, sessionState];
+  const { status: completionState, save: saveCompletion } = usePersistentRecords(repos.completions, () => []);
+  const states = [taskState, reminderState, sessionState, completionState];
 
   if (states.includes("loading")) return <p role="status">Loading…</p>;
 
@@ -41,6 +42,21 @@ function Board({ now }: { now: Date }) {
   const markDone = (id: string) => {
     const r = reminders.find((x) => x.id === id);
     if (r) void saveReminder({ ...r, lastCompletedDate: toDateKey(new Date()), updatedAt: new Date().toISOString(), revision: r.revision + 1 });
+  };
+  /** Marks the session completed and records the REAL minutes worked for task reports (not the planned length). */
+  const completeSession = (s: Session, minutesSpent: number) => {
+    const at = new Date();
+    void saveSession({ ...s, completedMinutes: minutesSpent, status: "completed", updatedAt: at.toISOString(), revision: s.revision + 1 });
+    void saveCompletion({
+      id: crypto.randomUUID(),
+      sourceId: s.id,
+      sourceType: "session",
+      completedAt: at.toISOString(),
+      localDate: toDateKey(at),
+      minutesSpent,
+      retroactive: false,
+      createdAt: at.toISOString(),
+    });
   };
 
   return (
@@ -63,7 +79,7 @@ function Board({ now }: { now: Date }) {
         <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} /></div>
         <div className={`${styles.aRem} ${styles.capped}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
         <div className={`${styles.aDw} ${styles.capped}`}><DailyWeeklyWidget /></div>
-        <div className={`${styles.aSes} ${styles.capped}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} /></div>
+        <div className={`${styles.aSes} ${styles.capped}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
       </div>
     </>
   );
