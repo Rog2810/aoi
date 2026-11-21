@@ -31,6 +31,7 @@ export function sampleData(today: Date) {
     session("t5", 1, 60),
     session("t5", 2, 60),
     session("t6", 1, 1, { status: "scheduled" }), // 1-minute test session
+    session("t6", 2, 1), // 1-minute test session that is NOT on the timebox
   ];
   const event = (id: string, title: string, date: string, startMinute: number, endMinute: number, recurrence: CalendarEvent["recurrence"], overlapPolicy: CalendarEvent["overlapPolicy"]): CalendarEvent =>
     ({ id, title, date, startMinute, endMinute, recurrence, overlapPolicy, ...base });
