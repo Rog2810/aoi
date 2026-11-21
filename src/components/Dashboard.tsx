@@ -7,8 +7,9 @@ import { sampleData } from "@/fixtures/sample";
 import type { WeekStart } from "@/lib/calendar";
 import { toDateKey } from "@/lib/dates";
 import CalendarWidget from "./CalendarWidget";
-import { DailyWeeklyWidget, LegendWidget, RemindersWidget, SessionsWidget } from "./MiniWidgets";
+import { DailyWeeklyWidget, LegendWidget, RemindersWidget } from "./MiniWidgets";
 import Nav from "./Nav";
+import SessionManagerWidget from "./SessionManagerWidget";
 import TasksEventsWidget from "./TasksEventsWidget";
 import TimeboxWidget from "./TimeboxWidget";
 import { usePersistentRecords } from "./usePersistentRecords";
@@ -28,8 +29,10 @@ function Board({ now }: { now: Date }) {
   const repos = getRepositories();
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
+  const { items: sessions, status: sessionState, save: saveSession } = usePersistentRecords(repos.sessions, () => data.sessions);
+  const states = [taskState, reminderState, sessionState];
 
-  if (taskState === "loading" || reminderState === "loading") return <p role="status">Loading…</p>;
+  if (states.includes("loading")) return <p role="status">Loading…</p>;
 
   const setStatus = (id: string, status: TaskStatus) => {
     const t = tasks.find((x) => x.id === id);
@@ -42,7 +45,7 @@ function Board({ now }: { now: Date }) {
 
   return (
     <>
-      {(taskState === "error" || reminderState === "error") && (
+      {states.includes("error") && (
         <p role="alert" className={styles.error}>
           Changes could not be saved on this device. Aoi is running from memory, so anything you change will be lost when you close this tab.
         </p>
@@ -57,10 +60,10 @@ function Board({ now }: { now: Date }) {
         <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} /></div>
         <div className={styles.aLeg}><LegendWidget /></div>
         <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} /></div>
-        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={data.sessions} tasks={tasks} /></div>
+        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} /></div>
         <div className={`${styles.aRem} ${styles.capped}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
         <div className={`${styles.aDw} ${styles.capped}`}><DailyWeeklyWidget /></div>
-        <div className={`${styles.aSes} ${styles.capped}`}><SessionsWidget sessions={data.sessions} tasks={tasks} /></div>
+        <div className={`${styles.aSes} ${styles.capped}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} /></div>
       </div>
     </>
   );

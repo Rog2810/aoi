@@ -27,29 +27,6 @@ export function RemindersWidget({ reminders, now, onDone }: { reminders: Reminde
   );
 }
 
-const STATUS: Record<SessionStatus, string> = { unscheduled: "Unscheduled", scheduled: "Scheduled", "in-progress": "In progress", completed: "Completed" };
-
-export function SessionsWidget({ sessions, tasks }: { sessions: Session[]; tasks: Task[] }) {
-  const groups = tasks.map((t) => ({ t, ss: sessions.filter((s) => s.taskId === t.id) })).filter((g) => g.ss.length > 0);
-  return (
-    <WidgetFrame title="Sessions" id="ses-h">
-      {groups.map(({ t, ss }) => (
-        <div key={t.id}>
-          <h3 className={styles.h3}>{t.title}: {ss.filter((s) => s.status === "completed").length} of {ss.length} sessions done</h3>
-          <ul className={styles.tasks}>
-            {ss.map((s) => (
-              <li key={s.id} className={styles.task}>
-                <span>Session {s.sequence}</span>
-                <span>{s.plannedMinutes} min planned · {s.completedMinutes} done · {remainingMinutes(s)} left · {STATUS[s.status]}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </WidgetFrame>
-  );
-}
-
 const cards = (items: string[]) => (
   <div className={styles.cardGrid}>
     {items.map((i) => <div key={i} className={styles.card}>{i}</div>)}

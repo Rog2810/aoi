@@ -52,6 +52,7 @@ const repo = <T extends { id: string }>(table: Table<T, string>): Repository<T> 
 export const createRepositories = (db: AoiDb = new AoiDb()) => ({
   tasks: repo(db.tasks),
   reminders: repo(db.reminders),
+  sessions: repo(db.sessions),
 });
 
 let shared: ReturnType<typeof createRepositories> | undefined;
