@@ -1,0 +1,31 @@
+.page { box-sizing: border-box; max-width: 90rem; margin: 0 auto; padding: clamp(0.75rem, 0.25rem + 2.2vw, 3rem); display: grid; gap: var(--space); }
+.bar { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space); }
+.brand { font-size: 1.1em; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space); flex-wrap: wrap; }
+.toolbar h1 { margin: 0; font-size: 1.4em; }
+.muted { color: var(--muted); }
+.error { border: 2px solid var(--text); border-radius: var(--radius); padding: 8px; margin: 0; }
+
+.board { display: grid; gap: var(--space); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 50em) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space); min-width: 0; }
+.column h2 { margin: 0 0 8px; font-size: 1.1em; }
+.count { color: var(--muted); font-weight: 400; }
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.card { display: grid; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); min-width: 0; }
+.cardTitle { font-weight: 700; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; font-size: 0.85em; }
+.swatch { display: inline-block; width: 0.8em; height: 0.8em; margin-right: 4px; border-radius: 50%; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+.modal { width: min(32rem, 94vw); background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space); }
+.modal::backdrop { background: rgb(0 0 0 / 0.45); }
+.modal h2 { margin-top: 0; }
+.form { display: grid; gap: 10px; }
+.form label { display: grid; gap: 2px; }
+.form input:not([type="checkbox"]), .form select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 8px; min-height: 32px; }
+.form fieldset { border: 1px solid var(--border); border-radius: var(--radius); }
+.form fieldset label { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
+.err { font-weight: 600; font-size: 0.9em; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

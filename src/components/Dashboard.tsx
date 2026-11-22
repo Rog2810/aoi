@@ -6,6 +6,7 @@ import type { Session, TaskStatus } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import type { WeekStart } from "@/lib/calendar";
 import { toDateKey } from "@/lib/dates";
+import { taskCompletion, withStatus } from "@/lib/tasks";
 import CalendarWidget from "./CalendarWidget";
 import { DailyWeeklyWidget, LegendWidget, RemindersWidget } from "./MiniWidgets";
 import Nav from "./Nav";
@@ -31,14 +32,18 @@ function Board({ now }: { now: Date }) {
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
   const { items: sessions, status: sessionState, save: saveSession } = usePersistentRecords(repos.sessions, () => data.sessions);
-  const { status: completionState, save: saveCompletion } = usePersistentRecords(repos.completions, () => []);
+    const { items: completions, status: completionState, save: saveCompletion, remove: removeCompletion } = usePersistentRecords(repos.completions, () => []);
   const states = [taskState, reminderState, sessionState, completionState];
 
   if (states.includes("loading")) return <p role="status">Loading…</p>;
 
   const setStatus = (id: string, status: TaskStatus) => {
     const t = tasks.find((x) => x.id === id);
-    if (t) void saveTask({ ...t, status, updatedAt: new Date().toISOString(), revision: t.revision + 1 });
+    if (!t) return;
+    const at = new Date();
+    void saveTask(withStatus(t, status, at));
+    if (status === "completed") void saveCompletion(taskCompletion(t.id, at));
+    else if (t.status === "completed") completions.filter((r) => r.sourceType === "task" && r.sourceId === t.id && r.localDate === toDateKey(at)).forEach((r) => void removeCompletion(r.id));
   };
   const markDone = (id: string) => {
     const r = reminders.find((x) => x.id === id);

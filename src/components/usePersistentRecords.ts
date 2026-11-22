@@ -45,5 +45,18 @@ export function usePersistentRecords<T extends { id: string }>(repo: Repository<
     [repo],
   );
 
-  return { items, status, save };
+  /** Removes a record from the screen and from IndexedDB. */
+  const remove = useCallback(
+    async (id: string) => {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      try {
+        await repo.remove(id);
+      } catch {
+        setStatus("error");
+      }
+    },
+    [repo],
+  );
+
+  return { items, status, save, remove };
 }
