@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, Task, TimeboxEntry } from "@/domain/types";
 import { formatMinute, toDateKey } from "@/lib/dates";
+import MarqueeText from "./MarqueeText";
 import WidgetFrame from "./WidgetFrame";
 import styles from "./Dashboard.module.css";
 
@@ -150,7 +151,7 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
   const describe = (i: Item) => (
     <>
-      <strong>{i.task.title}</strong>
+      <MarqueeText className={styles.strong}>{i.task.title}</MarqueeText>
       <div>Session {i.session.sequence}</div>
       <div>
         {i.entry ? `${formatMinute(i.entry.startMinute)}–${formatMinute(i.entry.endMinute)}` : "Not on today's timebox"} · {i.session.plannedMinutes} min planned
@@ -162,11 +163,11 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   return (
     <WidgetFrame title="Session" id="ses-h">
       <div className={styles.sesBoxes}>
-        <div className={styles.sesBox}>
+        <div className={styles.sesBox} data-marquee-host>
           <div className={styles.muted}>Current</div>
           {current ? describe(current) : <span className={styles.muted}>{scheduledToday.length ? "All of today's sessions are done." : "No sessions scheduled today. Place sessions on the timebox to see them here."}</span>}
         </div>
-        <div className={styles.sesBox}>
+        <div className={styles.sesBox} data-marquee-host>
           <div className={styles.muted}>Next</div>
           {next ? describe(next) : <span className={styles.muted}>None</span>}
         </div>
@@ -188,7 +189,7 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
           </div>
         ) : skipChoice && current ? (
           <div className={styles.sesEnd} role="group" aria-label="Finish or skip this session">
-            // change text for completion
+            {/* change text for completion */}
             <p>Session {current.session.sequence}: finishing saves the time worked so far; skipping moves it to the end of today's queue.</p>
             <button ref={skipFirstRef} onClick={finish}>Finish session</button>
             {queue.length > 1 && <button onClick={skipSession}>Skip session</button>}

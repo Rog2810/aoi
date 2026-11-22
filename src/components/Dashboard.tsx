@@ -60,7 +60,7 @@ function Board({ now }: { now: Date }) {
   };
 
   return (
-    <>
+    <div className={styles.shell}>
       {states.includes("error") && (
         <p role="alert" className={styles.error}>
           Changes could not be saved on this device. Aoi is running from memory, so anything you change will be lost when you close this tab.
@@ -77,10 +77,10 @@ function Board({ now }: { now: Date }) {
         <div className={styles.aLeg}><LegendWidget /></div>
         <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} /></div>
         <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} /></div>
-        <div className={`${styles.aRem} ${styles.capped}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
-        <div className={`${styles.aDw} ${styles.capped}`}><DailyWeeklyWidget /></div>
-        <div className={`${styles.aSes} ${styles.capped}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
+        <div className={`${styles.aRem}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
+        <div className={`${styles.aDw}`}><DailyWeeklyWidget /></div>
+        <div className={`${styles.aSes}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
       </div>
-    </>
+    </div>
   );
 }

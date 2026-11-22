@@ -26,7 +26,7 @@
 .tbHour { position: absolute; left: 0; right: 0; height: 40px; border-top: 1px solid var(--border); }
 .tbHour::after { content: ""; position: absolute; left: 4.5rem; right: 0; top: 50%; border-top: 1px dotted var(--border); }
 .tbLabel { position: absolute; left: 4px; top: 2px; font-size: 0.75em; color: var(--muted); }
-.tbBlock { position: absolute; left: 5rem; right: 4px; overflow: hidden; padding: 2px 6px; border-radius: 6px; font-size: 0.8em; background: var(--surface); transition: background var(--motion); }
+.tbBlock { position: absolute; min-height: 18px; left: 5rem; right: 4px; overflow: hidden; padding: 2px 6px; border-radius: 6px; font-size: 0.8em; background: var(--surface); transition: background var(--motion); }
 .tbBlock:hover { background: var(--border); }
 .tbEvent { border: 1px solid var(--text); border-left-width: 6px; }
 .tbSession { border: 2px dashed var(--text); }
@@ -42,17 +42,47 @@
 .swSession { border: 2px dashed var(--text); }
 .error { border: 2px solid var(--text); border-radius: var(--radius); padding: 8px; margin-bottom: var(--space); }
 
-/* ---- Home layout, following the mockup ---- */
-.widget { height: 100%; max-height: none; display: flex; flex-direction: column; }
-.home { display: grid; gap: var(--space); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.3fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "menu menu menu time" "cal cal leg time" "cal cal tasks time" "rem dw ses time"; }
+/* ---- Home layout ----
+   Narrow (default): one column in DOM order, the page scrolls.
+   Medium (>= 42em): two columns, the page scrolls.
+   Wide (>= 66em wide and >= 44em tall): four columns locked to the window; widgets scroll inside themselves.
+   Breakpoints are in em so browser zoom and larger text switch layouts earlier. Media queries cannot read CSS
+   variables, so if you change --col or --col-time, update 66em: 3 x --col + --col-time + gaps + side padding. */
+.widget { height: 100%; max-height: none; display: flex; flex-direction: column; container-type: inline-size; }
+
+.shell {
+  --page-pad: clamp(0.75rem, 0.25rem + 2.2vw, 3rem);
+  --gap: clamp(0.75rem, 0.4rem + 0.8vw, 1.5rem);
+  --col: 13rem;
+  --col-time: 19rem;
+  box-sizing: border-box; display: flex; flex-direction: column; gap: var(--gap);
+  width: 100%; max-width: 120rem; margin-inline: auto;
+  padding: max(var(--page-pad), env(safe-area-inset-top, 0px)) max(var(--page-pad), env(safe-area-inset-right, 0px))
+           max(var(--page-pad), env(safe-area-inset-bottom, 0px)) max(var(--page-pad), env(safe-area-inset-left, 0px));
+}
+.shell > .error { margin: 0; }
+
+.home { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); grid-template-areas: "menu" "cal" "leg" "tasks" "time" "rem" "dw" "ses"; }
 .aMenu { grid-area: menu; } .aCal { grid-area: cal; } .aLeg { grid-area: leg; } .aTasks { grid-area: tasks; }
 .aTime { grid-area: time; } .aRem { grid-area: rem; } .aDw { grid-area: dw; } .aSes { grid-area: ses; }
-.home > div { min-width: 0; }
-.fill { position: relative; min-height: 14rem; }
-.fill > section { position: absolute; inset: 0; overflow: auto; }
-.capped > section { max-height: 16rem; }
-@media (max-width: 1000px) {
-  .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "menu" "cal" "leg" "tasks" "time" "rem" "dw" "ses"; }
+.home > div { min-width: 0; min-height: 0; }
+.fill > section { max-height: 32rem; }
+
+@media (min-width: 42em) {
+  .home { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "menu menu" "cal cal" "tasks time" "leg time" "ses time" "rem dw"; }
+}
+
+@media (min-width: 66em) and (min-height: 44em) {
+  .shell { height: 100vh; height: 100dvh; overflow: hidden; }
+  .home {
+    flex: 1 1 auto; min-height: 0;
+    grid-template-columns: repeat(3, minmax(var(--col), 1fr)) minmax(var(--col-time), 1.35fr);
+    grid-template-rows: auto minmax(6rem, auto) minmax(14rem, 1fr) minmax(11rem, 17rem);
+    grid-template-areas: "menu menu menu time" "cal cal leg time" "cal cal tasks time" "rem dw ses time";
+  }
+  .fill { position: relative; }
+  .fill > section { position: absolute; inset: 0; max-height: none; overflow: auto; }
+  .tbCols { --hour-min: 1.75rem; }
 }
 
 .bar { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space); }
@@ -75,7 +105,7 @@
 .tbDay { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .dayCircle { display: inline-grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 2px solid var(--text); border-radius: 50%; font-weight: 700; }
 .counts { display: flex; gap: 6px; }
-.tbCols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.tbCols { --hour-min: 2.75rem; flex: 1 1 auto; min-height: calc(12 * var(--hour-min)); display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
 .tbCol { position: relative; }
 .tbHour::after { left: 3rem; }
 .tbBlock { left: 3.5rem; }
@@ -97,3 +127,42 @@
 .dial:disabled { opacity: 0.5; cursor: not-allowed; }
 .sesEnd { display: grid; gap: 6px; flex: 1 1 10rem; min-width: 0; }
 .sesEnd p { margin: 0; font-weight: 600; }
+
+.task > div { min-width: 0; flex: 1 1 auto; }
+.strong { font-weight: 700; }
+.tbText { font-weight: 700; }
+
+/* ---- Scrolling text: one line with a soft fade when it does not fit, scrolls on hover or focus.
+   Touch screens and reduced-motion users keep ordinary wrapping text, so nothing is ever hidden from them. ---- */
+.marquee { display: block; min-width: 0; }
+@keyframes marquee {
+  0%, 15% { transform: translateX(0); }
+  85%, 100% { transform: translateX(calc(-1 * var(--shift, 0px))); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .marquee { overflow: hidden; white-space: nowrap; }
+  .marqueeText { display: inline-block; }
+  .marqueeOn { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent); }
+  .marqueeOn:hover .marqueeText,
+  [data-marquee-host]:hover .marqueeOn .marqueeText,
+  [data-marquee-host]:focus-within .marqueeOn .marqueeText { animation: marquee var(--dur, 6s) ease-in-out infinite alternate; }
+  .tbBlock { display: flex; gap: 0.4em; align-items: baseline; }
+  .tbText { flex: 1 1 0; }
+  .tbTime { flex: none; }
+}
+
+/* ---- Widget-level responsiveness: each widget reacts to its own width, not the window's ---- */
+@container (max-width: 22rem) {
+  .calHead { font-size: 0.75em; }
+  .dayCell { padding: 1px 2px; }
+  .dayNum { font-size: 0.8em; min-width: 1.5em; }
+  .tbCols { gap: 6px; }
+  .tbLabel { font-size: 0.65em; }
+  .tbHour::after { left: 2.25rem; }
+  .tbBlock { left: 2.5rem; font-size: 0.72em; }
+  .counts { gap: 4px; }
+}
+@container (max-width: 19rem) {
+  .sesBoxes { grid-template-columns: 1fr; }
+  .ring { width: 4.5rem; height: 4.5rem; }
+}

@@ -2,6 +2,7 @@
 import type { CalendarEvent, Task, TaskStatus } from "@/domain/types";
 import { daysRemaining, describeRemaining, formatDueDate, formatMinute } from "@/lib/dates";
 import TabControl from "./TabControl";
+import MarqueeText from "./MarqueeText";
 import WidgetFrame from "./WidgetFrame";
 import styles from "./Dashboard.module.css";
 
@@ -18,9 +19,9 @@ export default function TasksEventsWidget({ tasks, events, now, onStatus }: Prop
         {active.map((t) => {
           const parent = tasks.find((p) => p.id === t.parentId);
           return (
-            <li key={t.id} className={styles.task}>
+            <li key={t.id} className={styles.task} data-marquee-host>
               <div>
-                <div className={styles.title}>{t.title}</div>
+                <MarqueeText className={styles.title}>{t.title}</MarqueeText>
                 {parent && <div className={styles.muted}>Subtask of {parent.title}</div>}
                 <div>{formatDueDate(t.dueDate)} · {describeRemaining(daysRemaining(t.dueDate, now))}</div>
                 <div className={styles.muted}>{t.estimateMinutes} min estimated</div>
@@ -49,9 +50,9 @@ export default function TasksEventsWidget({ tasks, events, now, onStatus }: Prop
   const eventPanel = (
     <ul className={styles.tasks}>
       {events.map((e) => (
-        <li key={e.id} className={styles.task}>
+        <li key={e.id} className={styles.task} data-marquee-host>
           <div>
-            <div className={styles.title}>{e.title}</div>
+            <MarqueeText className={styles.title}>{e.title}</MarqueeText>
             <div>{formatDueDate(e.date)} · {formatMinute(e.startMinute)}–{formatMinute(e.endMinute)}</div>
             <div className={styles.muted}>
               {e.recurrence === "never" ? "Does not repeat" : `Repeats ${e.recurrence}`} · {e.overlapPolicy === "exclusive" ? "Exclusive" : "Allows parallel work"}

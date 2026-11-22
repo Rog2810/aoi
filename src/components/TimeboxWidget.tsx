@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import type { CalendarEvent, Session, Task, TimeboxEntry } from "@/domain/types";
 import { addDays, formatMinute, toDateKey } from "@/lib/dates";
 import { occursOn } from "@/lib/events";
+import MarqueeText from "./MarqueeText";
 import styles from "./Dashboard.module.css";
 
-const HOUR = 44; // px per hour; 12 hours per column
 interface Block { id: string; label: string; kind: "Event" | "Session"; start: number; end: number }
 interface Props { now: Date; events: CalendarEvent[]; entries: TimeboxEntry[]; sessions: Session[]; tasks: Task[] }
 
@@ -17,13 +17,15 @@ const jumpTo = (id: string) => {
   el?.scrollIntoView({ block: "center" });
 };
 
+/** Hours are placed as percentages of the column height, so the 12 hours always fill the whole column (the CSS sets a minimum height). */
 function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; nowMin: number | null }) {
   const c0 = from * 60;
   const c1 = c0 + 720;
+  const pct = (minutes: number) => `${((minutes - c0) / 720) * 100}%`;
   return (
-    <div className={styles.tbCol} style={{ height: 12 * HOUR }}>
+    <div className={styles.tbCol}>
       {Array.from({ length: 12 }, (_, i) => (
-        <div key={i} className={styles.tbHour} style={{ top: i * HOUR, height: HOUR }}>
+        <div key={i} className={styles.tbHour} style={{ top: `${(i / 12) * 100}%`, height: `${100 / 12}%` }}>
           <span className={styles.tbLabel}>{hourLabel(from + i)}</span>
         </div>
       ))}
@@ -35,18 +37,20 @@ function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; no
           <div
             key={b.id}
             tabIndex={0}
+            data-marquee-host
             aria-label={detail}
             aria-hidden={b.start < c0 || undefined} // second half of a block that crosses noon
             title={detail}
             className={`${styles.tbBlock} ${b.kind === "Session" ? styles.tbSession : styles.tbEvent}`}
-            style={{ top: ((s - c0) / 60) * HOUR, height: Math.max(18, ((e - s) / 60) * HOUR) }}
+            style={{ top: pct(s), height: `${((e - s) / 720) * 100}%` }}
           >
-            <strong>{b.label}</strong> <span>{formatMinute(b.start)}–{formatMinute(b.end)}</span>
+            <MarqueeText className={styles.tbText}>{b.label}</MarqueeText>{" "}
+            <span className={styles.tbTime}>{formatMinute(b.start)}–{formatMinute(b.end)}</span>
           </div>
         );
       })}
       {nowMin !== null && nowMin >= c0 && nowMin < c1 && (
-        <div className={styles.tbNow} style={{ top: ((nowMin - c0) / 60) * HOUR }} role="img" aria-label={`Current time ${formatMinute(nowMin)}`} />
+        <div className={styles.tbNow} style={{ top: pct(nowMin) }} role="img" aria-label={`Current time ${formatMinute(nowMin)}`} />
       )}
     </div>
   );
