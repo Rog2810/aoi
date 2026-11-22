@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { categoryFor } from "@/config/categories";
 import type { Task } from "@/domain/types";
 import { monthGrid, type WeekStart } from "@/lib/calendar";
@@ -56,14 +56,14 @@ export default function CalendarWidget({ now, tasks, weekStart = 1 }: { now: Dat
         </div>
       }
     >
-      <div role="table" aria-label="Month calendar. Colored lines run from each task's start date to its due date." className={styles.calTable}>
+      <div role="table" aria-label="Month calendar. Colored lines run from each task's start date to its due date." className={styles.calTable} style={{ "--lanes": lanes } as CSSProperties}>
         <div role="row" className={styles.calHead}>
           {weekdays.map((d) => <span key={d} role="columnheader">{d}</span>)}
         </div>
         {weeks.map((week) => {
           const row = week.map((c) => c.key);
           return (
-            <div key={row[0]} role="row" className={styles.week} style={{ minHeight: 28 + lanes * 9 }}>
+            <div key={row[0]} role="row" className={styles.week}>
               {week.map((c) => {
                 const n = open.filter((t) => t.dueDate === c.key).length;
                 return (
@@ -78,7 +78,7 @@ export default function CalendarWidget({ now, tasks, weekStart = 1 }: { now: Dat
                   </div>
                 );
               })}
-              <div className={styles.lines} aria-hidden="true" style={{ gridTemplateRows: `repeat(${lanes}, 6px)` }}>
+              <div className={styles.lines} aria-hidden="true" style={{ gridTemplateRows: `repeat(${lanes}, minmax(2px, 6px))` }}>
                 {spans.filter((s) => s.end >= row[0] && s.start <= row[6]).map((s) => {
                   const a = s.start <= row[0] ? 0 : row.indexOf(s.start);
                   const b = s.end >= row[6] ? 6 : row.indexOf(s.end);

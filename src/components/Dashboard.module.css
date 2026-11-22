@@ -48,7 +48,7 @@
    Wide (>= 66em wide and >= 44em tall): four columns locked to the window; widgets scroll inside themselves.
    Breakpoints are in em so browser zoom and larger text switch layouts earlier. Media queries cannot read CSS
    variables, so if you change --col or --col-time, update 66em: 3 x --col + --col-time + gaps + side padding. */
-.widget { height: 100%; max-height: none; display: flex; flex-direction: column; container-type: inline-size; }
+.widget { box-sizing: border-box; height: 100%; max-height: none; display: flex; flex-direction: column; container-type: inline-size; }
 
 .shell {
   --page-pad: clamp(0.75rem, 0.25rem + 2.2vw, 3rem);
@@ -73,7 +73,8 @@
 }
 
 @media (min-width: 66em) and (min-height: 44em) {
-  .shell { height: 100vh; height: 100dvh; overflow: hidden; }
+  /* Pinned to the viewport so wrappers outside the dashboard (body, main) cannot add height or margins to it. */
+  .shell { position: fixed; inset: 0; overflow: hidden; }
   .home {
     flex: 1 1 auto; min-height: 0;
     grid-template-columns: repeat(3, minmax(var(--col), 1fr)) minmax(var(--col-time), 1.35fr);
@@ -90,13 +91,13 @@
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* calendar */
-.calTable { flex: 1; display: grid; grid-template-rows: auto repeat(6, minmax(0, 1fr)); margin-top: 8px; }
+.calTable { flex: 1; min-height: 0; display: grid; grid-template-rows: auto repeat(6, minmax(0, 1fr)); margin-top: 8px; }
 .calHead { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--muted); font-weight: 600; }
-.week { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); }
+.week { position: relative; min-height: calc(1.75rem + var(--lanes, 1) * 0.5625rem); display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); }
 .dayCell { padding: 2px 4px; min-width: 0; }
 .dayNum { display: inline-block; min-width: 1.7em; text-align: center; border-radius: 999px; font-size: 0.9em; }
 .todayNum { outline: 2px dashed var(--text); }
-.lines { position: absolute; left: 0; right: 0; bottom: 6px; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 6px; row-gap: 3px; pointer-events: none; }
+.lines { position: absolute; left: 0; right: 0; top: 1.7rem; bottom: 4px; display: grid; align-content: end; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(2px, 6px); row-gap: 2px; pointer-events: none; }
 .line { margin: 0 2px; }
 .legend { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
 
@@ -165,4 +166,10 @@
 @container (max-width: 19rem) {
   .sesBoxes { grid-template-columns: 1fr; }
   .ring { width: 4.5rem; height: 4.5rem; }
+}
+
+/* Locked-to-window layout: the calendar never scrolls. Its weeks share whatever height is left, and the task lines get thinner to fit. */
+@media (min-width: 66em) and (min-height: 44em) {
+  .week { min-height: 0; }
+  .aCal > section { overflow: hidden; }
 }
