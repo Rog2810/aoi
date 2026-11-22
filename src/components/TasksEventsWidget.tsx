@@ -6,9 +6,17 @@ import MarqueeText from "./MarqueeText";
 import WidgetFrame from "./WidgetFrame";
 import styles from "./Dashboard.module.css";
 
-interface Props { tasks: Task[]; events: CalendarEvent[]; now: Date; onStatus: (id: string, s: TaskStatus) => void }
+interface Props {
+  tasks: Task[];
+  events: CalendarEvent[];
+  now: Date;
+  onStatus: (id: string, s: TaskStatus) => void;
+  /** Hovering or focusing a task here highlights its span on the calendar, and the other way round. */
+  activeTaskId?: string | null;
+  onActiveTask?: (id: string | null) => void;
+}
 
-export default function TasksEventsWidget({ tasks, events, now, onStatus }: Props) {
+export default function TasksEventsWidget({ tasks, events, now, onStatus, activeTaskId, onActiveTask }: Props) {
   const active = tasks.filter((t) => t.status !== "completed").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const done = tasks.filter((t) => t.status === "completed");
 
@@ -19,7 +27,15 @@ export default function TasksEventsWidget({ tasks, events, now, onStatus }: Prop
         {active.map((t) => {
           const parent = tasks.find((p) => p.id === t.parentId);
           return (
-            <li key={t.id} className={styles.task} data-marquee-host>
+            <li
+              key={t.id}
+              className={activeTaskId === t.id ? `${styles.task} ${styles.taskLit}` : styles.task}
+              data-marquee-host
+              onMouseEnter={() => onActiveTask?.(t.id)}
+              onMouseLeave={() => onActiveTask?.(null)}
+              onFocus={() => onActiveTask?.(t.id)}
+              onBlur={() => onActiveTask?.(null)}
+            >
               <div>
                 <MarqueeText className={styles.title}>{t.title}</MarqueeText>
                 {parent && <div className={styles.muted}>Subtask of {parent.title}</div>}

@@ -56,7 +56,12 @@ export function LegendWidget() {
           <li key={c.id}><span className={styles.sw} style={{ background: c.color }} />{c.name}</li>
         ))}
       </ul>
-      <p className={styles.muted}>A line runs from each task's start date to its due date.</p>
+      <p className={styles.muted}>Dots mark due dates. Short lines count open tasks. Darker days have more planned work.</p>
+      <div className={styles.loadKey} aria-hidden="true">
+        <span>Less</span>
+        {[1, 2, 3, 4].map((n) => <span key={n} className={`${styles.sw} ${styles[`load${n}`]}`} />)}
+        <span>More</span>
+      </div>
     </WidgetFrame>
   );
 }

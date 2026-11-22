@@ -26,6 +26,7 @@ export default function Dashboard() {
 function Board({ now }: { now: Date }) {
   const weekStart: WeekStart = 1; // TODO(settings): read Monday/Sunday from the preferences repository
   const data = useMemo(() => sampleData(now), [now]);
+  const [activeTask, setActiveTask] = useState<string | null>(null); // hovered task, shared by the calendar and the task list
   const repos = getRepositories();
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
@@ -73,9 +74,9 @@ function Board({ now }: { now: Date }) {
             <Nav />
           </div>
         </div>
-        <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} /></div>
+        <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
         <div className={styles.aLeg}><LegendWidget /></div>
-        <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} /></div>
+        <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
         <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} /></div>
         <div className={`${styles.aRem}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
         <div className={`${styles.aDw}`}><DailyWeeklyWidget /></div>

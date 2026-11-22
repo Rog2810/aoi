@@ -93,12 +93,10 @@
 /* calendar */
 .calTable { flex: 1; min-height: 0; display: grid; grid-template-rows: auto repeat(6, minmax(0, 1fr)); margin-top: 8px; }
 .calHead { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--muted); font-weight: 600; }
-.week { position: relative; min-height: calc(1.75rem + var(--lanes, 1) * 0.5625rem); display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); }
-.dayCell { padding: 2px 4px; min-width: 0; }
+.week { position: relative; min-height: 3.5rem; display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); }
+.dayCell { position: relative; padding: 2px 4px; min-width: 0; }
 .dayNum { display: inline-block; min-width: 1.7em; text-align: center; border-radius: 999px; font-size: 0.9em; }
 .todayNum { outline: 2px dashed var(--text); }
-.lines { position: absolute; left: 0; right: 0; top: 1.7rem; bottom: 4px; display: grid; align-content: end; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(2px, 6px); row-gap: 2px; pointer-events: none; }
-.line { margin: 0 2px; }
 .legend { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
 
 /* timebox */
@@ -173,3 +171,21 @@
   .week { min-height: 0; }
   .aCal > section { overflow: hidden; }
 }
+
+/* ---- Calendar days: shade = planned work, corner lines = open tasks, dots = due dates.
+   Step strengths are the --load-N percentages below; the minute edges live in config/load.ts. ---- */
+.shell { --load-1: 10%; --load-2: 20%; --load-3: 32%; --load-4: 46%; }
+.dayCell + .dayCell { border-left: 1px solid var(--border); }
+.load1 { background: color-mix(in srgb, var(--primary) var(--load-1, 10%), var(--surface)); }
+.load2 { background: color-mix(in srgb, var(--primary) var(--load-2, 20%), var(--surface)); }
+.load3 { background: color-mix(in srgb, var(--primary) var(--load-3, 32%), var(--surface)); }
+.load4 { background: color-mix(in srgb, var(--primary) var(--load-4, 46%), var(--surface)); }
+.stack { position: absolute; top: 3px; right: 4px; display: flex; flex-direction: column; align-items: flex-end; }
+.stackLine { box-sizing: content-box; width: 16px; height: 3px; padding: 1.5px 0; background-clip: content-box; transition: opacity var(--motion); }
+.stackMore { font-size: 0.7em; line-height: 1; color: var(--muted); }
+.dots { position: absolute; left: 4px; bottom: 4px; display: flex; align-items: center; gap: 3px; }
+.dot { box-sizing: border-box; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--surface); transition: opacity var(--motion); }
+.dim { opacity: 0.25; }
+.taskLit { outline: 2px solid var(--text); outline-offset: -2px; }
+.loadKey { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.85em; color: var(--muted); }
+.loadKey .sw { margin-right: 0; }
