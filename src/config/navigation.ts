@@ -6,7 +6,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Tasks", href: "/tasks", built: true },
   { label: "Events", href: "/events", built: false },
   { label: "Calendar", href: "/calendar", built: false },
-  { label: "Timebox", href: "/timebox", built: false },
+  { label: "Timebox", href: "/timebox", built: true },
   { label: "Layouts", href: "/layouts", built: false },
   { label: "Settings", href: "/settings", built: false },
 ];

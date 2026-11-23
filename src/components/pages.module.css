@@ -29,3 +29,42 @@
 .form fieldset label { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
 .err { font-weight: 600; font-size: 0.9em; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* ---- Timebox page ---- */
+.pageTitle { margin: 0; font-size: 1.4em; }
+.split { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@media (min-width: 90em) { .split { grid-template-columns: minmax(0, 1fr) 27rem; } }
+.backlog { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.backlog h2 { margin: 0; font-size: 1.2em; }
+.colTitle { margin: 0 0 8px; font-size: 1.05em; }
+.cards2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.placeholder { border: 2px dashed var(--muted); border-radius: var(--radius); padding: var(--space); display: grid; gap: 12px; align-content: start; min-height: 40rem; }
+.placeholder h2 { margin: 0; font-size: 1.2em; }
+.hours { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hourCol { height: 42rem; margin-top: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px 3.5rem); }
+
+/* progress strip: one segment per session */
+.strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85em; }
+.segs { display: flex; gap: 3px; }
+.seg { width: 22px; height: 8px; border: 1px solid var(--text); border-radius: 2px; background: var(--bg); }
+.segDone { background: var(--text); }
+.segHalf { background: linear-gradient(90deg, var(--text) 50%, var(--bg) 50%); }
+
+/* stacked session cards: next session on top, the rest peek out and spread when clicked */
+.stack { --peek: 10px; --gap: 8px; --dur: 220ms; display: grid; gap: 6px; position: relative; margin-top: 2px; }
+.tg { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.cards { position: relative; height: calc(var(--h) + var(--k) * var(--peek)); transition: height var(--dur) ease; }
+.tg:checked ~ .cards { height: calc(var(--n) * var(--h) + (var(--n) - 1) * var(--gap)); }
+.sc { position: absolute; left: 0; right: 0; top: 0; height: var(--h); box-sizing: border-box; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.14); transform-origin: 50% 0; transform: translateY(calc(var(--p) * var(--peek))) scale(calc(1 - var(--p) * 0.04)); z-index: calc(10 - var(--i)); transition: transform var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 25ms); }
+.tg:checked ~ .cards .sc { transform: translateY(calc(var(--i) * (var(--h) + var(--gap)))); }
+.inner { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 10px; box-sizing: border-box; visibility: visible; transition: visibility 0s; }
+.tg:not(:checked) ~ .cards .sc:not(.top) .inner { visibility: hidden; transition: visibility 0s linear var(--dur); }
+.grip { flex: none; width: 10px; height: 15px; background-image: radial-gradient(var(--muted) 1.5px, transparent 1.7px); background-size: 5px 5px; } /* cursor: grab once dragging exists */
+.tx { flex: 1; min-width: 0; font-size: 0.9em; overflow-wrap: anywhere; }
+.peek { position: absolute; left: 0; right: 0; top: var(--h); height: calc(var(--k) * var(--peek)); z-index: 20; cursor: pointer; }
+.tg:checked ~ .cards .peek { display: none; }
+.cap { justify-self: start; display: inline-flex; align-items: center; min-height: 32px; padding: 0 6px; border-radius: 8px; font-size: 0.9em; cursor: pointer; }
+.tg:focus-visible ~ .cap { outline: 3px solid var(--focus); outline-offset: 2px; }
+.chev { display: inline-block; width: 7px; height: 7px; margin: -3px 0 0 8px; border-right: 2px solid var(--text); border-bottom: 2px solid var(--text); transform: rotate(45deg); transition: transform var(--dur); }
+.tg:checked ~ .cap .chev { transform: rotate(-135deg); margin-top: 3px; }
+@media (prefers-reduced-motion: reduce) { .cards, .sc, .inner, .chev { transition: none !important; } }

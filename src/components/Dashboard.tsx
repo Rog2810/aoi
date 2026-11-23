@@ -32,8 +32,9 @@ function Board({ now }: { now: Date }) {
   const { items: tasks, status: taskState, save: saveTask } = usePersistentRecords(repos.tasks, () => data.tasks);
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
   const { items: sessions, status: sessionState, save: saveSession } = usePersistentRecords(repos.sessions, () => data.sessions);
-    const { items: completions, status: completionState, save: saveCompletion, remove: removeCompletion } = usePersistentRecords(repos.completions, () => []);
-  const states = [taskState, reminderState, sessionState, completionState];
+  const { items: timebox, status: timeboxState } = usePersistentRecords(repos.timebox, () => data.timebox);
+  const { items: completions, status: completionState, save: saveCompletion, remove: removeCompletion } = usePersistentRecords(repos.completions, () => []);
+  const states = [taskState, reminderState, sessionState, completionState, timeboxState];
 
   if (states.includes("loading")) return <p role="status">Loading…</p>;
 

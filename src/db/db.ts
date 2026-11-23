@@ -54,6 +54,7 @@ export const createRepositories = (db: AoiDb = new AoiDb()) => ({
   reminders: repo(db.reminders),
   sessions: repo(db.sessions),
   completions: repo(db.completions),
+  timebox: repo(db.timebox),
 });
 
 let shared: ReturnType<typeof createRepositories> | undefined;
