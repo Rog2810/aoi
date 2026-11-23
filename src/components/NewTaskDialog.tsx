@@ -2,15 +2,15 @@
 import { useState, type FormEvent } from "react";
 import { CATEGORIES } from "@/config/categories";
 import { TAGS } from "@/config/tags";
-import type { Task } from "@/domain/types";
+import type { Project, Task } from "@/domain/types";
 import { MAX_CATEGORIES, MAX_TAGS, validateNewTask, type NewTaskInput } from "@/lib/tasks";
 import Modal from "./Modal";
 import styles from "./pages.module.css";
 
-const EMPTY: NewTaskInput = { title: "", dueDate: "", dueTime: "", estimate: "60", preferred: "", categoryIds: [], tagIds: [] };
-interface Props { open: boolean; onClose: () => void; parents: Task[]; onCreate: (input: NewTaskInput, parentId?: string) => void }
+const EMPTY: NewTaskInput = { title: "", dueDate: "", dueTime: "", estimate: "60", preferred: "", categoryIds: [], tagIds: [], projectId: "" };
+interface Props { open: boolean; onClose: () => void; parents: Task[]; projects: Project[]; onCreate: (input: NewTaskInput, parentId?: string) => void }
 
-export default function NewTaskDialog({ open, onClose, parents, onCreate }: Props) {
+export default function NewTaskDialog({ open, onClose, parents, projects, onCreate }: Props) {
   const [form, setForm] = useState(EMPTY);
   const [parentId, setParentId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -21,7 +21,7 @@ export default function NewTaskDialog({ open, onClose, parents, onCreate }: Prop
   const pickParent = (id: string) => {
     setParentId(id);
     const p = parents.find((x) => x.id === id);
-    if (p) setForm((f) => ({ ...f, dueDate: p.dueDate, categoryIds: p.categoryIds, tagIds: p.tagIds }));
+    if (p) setForm((f) => ({ ...f, dueDate: p.dueDate, categoryIds: p.categoryIds, tagIds: p.tagIds, projectId: p.projectId ?? f.projectId }));
   };
   const close = () => {
     setForm(EMPTY);
@@ -48,6 +48,12 @@ export default function NewTaskDialog({ open, onClose, parents, onCreate }: Prop
           <select value={parentId} onChange={(e) => pickParent(e.target.value)}>
             <option value="">None</option>
             {parents.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+          </select>
+        </label>
+        <label>Project (optional)
+          <select value={form.projectId ?? ""} onChange={(e) => set("projectId", e.target.value)}>
+            <option value="">None</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </label>
         <label>Due date<input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} {...bad("dueDate")} /></label>{err("dueDate")}

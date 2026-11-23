@@ -21,11 +21,13 @@ export interface Task extends Versioned {
   tagIds: string[]; // 1-3, enforced by validation
   status: TaskStatus;
   parentId?: string;
+  projectId?: string; // optional container
 }
 
 /** One logical work block. A partial session stays ONE session (completedMinutes < plannedMinutes). */
 export interface Session extends Versioned {
-  taskId: string;
+  ownerType: "task" | "project"; // work block for a task or for a project
+  ownerId: string;
   sequence: number;
   plannedMinutes: number;
   completedMinutes: number;
@@ -71,4 +73,13 @@ export interface CalendarEvent extends Versioned {
 export interface Reminder extends Versioned {
   title: string;
   lastCompletedDate: string;
+}
+
+/** A container with no due date. It can own tasks (Task.projectId) and its own open-ended sessions. */
+export interface Project extends Versioned {
+  title: string;
+  description?: string;
+  categoryIds: string[];
+  tagIds: string[];
+  status: "active" | "paused" | "archived";
 }

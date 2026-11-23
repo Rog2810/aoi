@@ -189,3 +189,5 @@
 .taskLit { outline: 2px solid var(--text); outline-offset: -2px; }
 .loadKey { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.85em; color: var(--muted); }
 .loadKey .sw { margin-right: 0; }
+
+.tbDone { background: color-mix(in srgb, #16a34a 24%, var(--bg)); border: 2px solid #15803d; }

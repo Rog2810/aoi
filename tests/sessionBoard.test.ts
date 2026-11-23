@@ -1,42 +1,48 @@
 import { describe, expect, it } from "vitest";
-import type { CompletionRecord, Session, Task, TimeboxEntry } from "../src/domain/types";
-import { groupSessions, sessionColumn } from "../src/lib/sessionBoard";
+import type { Project, Session, Task, TimeboxEntry } from "../src/domain/types";
+import { groupSessions, segmentsFor } from "../src/lib/sessionBoard";
 
 const stamp = "2026-11-01T00:00:00.000Z";
 const task = (id: string, extra: Partial<Task> = {}): Task => ({ id, title: id, dueDate: "2026-11-30", estimateMinutes: 90, categoryIds: [], tagIds: [], status: "not-started", createdAt: stamp, updatedAt: stamp, revision: 1, ...extra });
-const session = (id: string, taskId: string, sequence: number, extra: Partial<Session> = {}): Session => ({ id, taskId, sequence, plannedMinutes: 45, completedMinutes: 0, status: "unscheduled", createdAt: stamp, updatedAt: stamp, revision: 1, ...extra });
+const project = (id: string, extra: Partial<Project> = {}): Project => ({ id, title: id, categoryIds: [], tagIds: [], status: "active", createdAt: stamp, updatedAt: stamp, revision: 1, ...extra });
+const session = (id: string, ownerId: string, sequence: number, extra: Partial<Session> = {}): Session => ({ id, ownerType: "task", ownerId, sequence, plannedMinutes: 45, completedMinutes: 0, status: "unscheduled", createdAt: stamp, updatedAt: stamp, revision: 1, ...extra });
 const slot = (sourceId: string, date: string, start: number): TimeboxEntry => ({ id: `b-${sourceId}`, date, startMinute: start, endMinute: start + 45, sourceType: "session", sourceId, manual: true, createdAt: stamp, updatedAt: stamp });
-const done = (sourceId: string, localDate: string): CompletionRecord => ({ id: `c-${sourceId}-${localDate}`, sourceId, sourceType: "session", completedAt: stamp, localDate, retroactive: false, createdAt: stamp });
-const TODAY = "2026-11-23";
 
-describe("sessionColumn", () => {
-  const t = task("t1");
-  it("splits open sessions by whether they have a slot", () => {
-    expect(sessionColumn(session("s1", "t1", 1), t, [], [], TODAY)).toBe("unscheduled");
-    expect(sessionColumn(session("s1", "t1", 1), t, [slot("s1", TODAY, 540)], [], TODAY)).toBe("scheduled");
+describe("groupSessions", () => {
+  it("splits open task sessions by whether they have a slot", () => {
+    const g = groupSessions([task("t1")], [], [session("s1", "t1", 1), session("s2", "t1", 2)], [slot("s2", "2026-11-23", 540)]);
+    expect(g.unscheduled[0].sessions.map((s) => s.id)).toEqual(["s1"]);
+    expect(g.scheduled[0].sessions.map((s) => s.id)).toEqual(["s2"]);
   });
-  it("shows sessions completed today and hides earlier ones", () => {
-    const s = session("s1", "t1", 1, { status: "completed" });
-    expect(sessionColumn(s, t, [], [done("s1", TODAY)], TODAY)).toBe("completed-today");
-    expect(sessionColumn(s, t, [], [done("s1", "2026-11-22")], TODAY)).toBeNull();
+  it("makes one group per task per column, sorted by due date", () => {
+    const tasks = [task("late", { dueDate: "2026-12-10" }), task("soon", { dueDate: "2026-11-25" })];
+    const g = groupSessions(tasks, [], [session("a1", "late", 1), session("a2", "late", 2), session("b1", "soon", 1)], []).unscheduled;
+    expect(g.map((x) => (x.kind === "task" ? x.task.id : ""))).toEqual(["soon", "late"]);
+    expect(g[1].sessions.map((s) => s.id)).toEqual(["a1", "a2"]);
   });
-  it("hides sessions of cancelled tasks and open sessions of completed tasks", () => {
-    expect(sessionColumn(session("s1", "t1", 1), task("t1", { status: "cancelled" }), [], [], TODAY)).toBeNull();
-    expect(sessionColumn(session("s1", "t1", 1), task("t1", { status: "completed" }), [], [], TODAY)).toBeNull();
+  it("orders a scheduled group by slot so the next session is on top", () => {
+    const sessions = [session("s1", "t1", 1), session("s2", "t1", 2), session("s3", "t1", 3)];
+    const entries = [slot("s1", "2026-11-24", 540), slot("s2", "2026-11-23", 1020), slot("s3", "2026-11-23", 660)];
+    expect(groupSessions([task("t1")], [], sessions, entries).scheduled[0].sessions.map((s) => s.id)).toEqual(["s3", "s2", "s1"]);
+  });
+  it("puts every project session in Projects, scheduled or not, and keeps projects with no sessions", () => {
+    const sessions = [session("p1:s1", "p1", 1, { ownerType: "project" }), session("p1:s2", "p1", 2, { ownerType: "project" })];
+    const g = groupSessions([], [project("p1"), project("p2")], sessions, [slot("p1:s2", "2026-11-23", 540)]);
+    expect(g.projects.map((x) => x.sessions.length)).toEqual([2, 0]);
+    expect(g.unscheduled).toEqual([]);
+    expect(g.scheduled).toEqual([]);
+  });
+  it("hides completed sessions, sessions of closed tasks and archived projects", () => {
+    const sessions = [session("a", "t1", 1, { status: "completed" }), session("b", "t2", 1), session("c", "t3", 1)];
+    const tasks = [task("t1"), task("t2", { status: "cancelled" }), task("t3", { status: "completed" })];
+    const g = groupSessions(tasks, [project("p1", { status: "archived" })], sessions, []);
+    expect([g.unscheduled, g.scheduled, g.projects].map((x) => x.length)).toEqual([0, 0, 0]);
   });
 });
 
-describe("groupSessions", () => {
-  it("makes one group per task per column, sorted by due date", () => {
-    const tasks = [task("late", { dueDate: "2026-12-10" }), task("soon", { dueDate: "2026-11-25" })];
-    const sessions = [session("a1", "late", 1), session("a2", "late", 2), session("b1", "soon", 1)];
-    const groups = groupSessions(tasks, sessions, [], [], TODAY).unscheduled;
-    expect(groups.map((g) => g.task.id)).toEqual(["soon", "late"]);
-    expect(groups[1].sessions.map((s) => s.id)).toEqual(["a1", "a2"]);
-  });
-  it("orders a scheduled group by slot, so the next session is on top", () => {
-    const sessions = [session("s1", "t1", 1), session("s2", "t1", 2), session("s3", "t1", 3)];
-    const entries = [slot("s1", "2026-11-24", 540), slot("s2", TODAY, 1020), slot("s3", TODAY, 660)];
-    expect(groupSessions([task("t1")], sessions, entries, [], TODAY).scheduled[0].sessions.map((s) => s.id)).toEqual(["s3", "s2", "s1"]);
+describe("segmentsFor", () => {
+  it("shows done, half and empty segments in order", () => {
+    const s = [session("a", "t1", 1, { status: "completed" }), session("b", "t1", 2, { status: "in-progress" }), session("c", "t1", 3)];
+    expect(segmentsFor(s, "t1")).toEqual(["done", "half", "empty"]);
   });
 });

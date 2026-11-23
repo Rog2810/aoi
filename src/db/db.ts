@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { CompletionRecord, Reminder, Session, Task, TimeboxEntry } from "../domain/types";
+import type { CompletionRecord, Reminder, Session, Task, TimeboxEntry, Project } from "../domain/types";
 import type { LayoutConfig } from "../lib/shareCode";
 
 /** Only this file knows about Dexie/IndexedDB. Everything else talks to repositories. */
@@ -10,6 +10,7 @@ export class AoiDb extends Dexie {
   completions!: Table<CompletionRecord, string>;
   timebox!: Table<TimeboxEntry, string>;
   layouts!: Table<{ id: string; config: LayoutConfig }, string>;
+  projects!: Table<Project, string>;
 
   constructor(name = "aoi") {
     super(name);
@@ -23,6 +24,16 @@ export class AoiDb extends Dexie {
     // Never edit an older version: browsers that already have it would not upgrade correctly.
     // Add a new version instead, listing only the tables that are new or changed.
     this.version(2).stores({ reminders: "id" });
+    // v3: sessions belong to a task OR a project, and projects get a table.
+    this.version(3)
+      .stores({ sessions: "id, ownerId, status", projects: "id, status" })
+      .upgrade((tx) =>
+        tx.table("sessions").toCollection().modify((s: Record<string, unknown>) => {
+          s.ownerType = "task";
+          s.ownerId = s.taskId;
+          delete s.taskId;
+        }),
+      );
   }
 }
 
@@ -55,6 +66,7 @@ export const createRepositories = (db: AoiDb = new AoiDb()) => ({
   sessions: repo(db.sessions),
   completions: repo(db.completions),
   timebox: repo(db.timebox),
+  projects: repo(db.projects),
 });
 
 let shared: ReturnType<typeof createRepositories> | undefined;

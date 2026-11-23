@@ -14,7 +14,8 @@ export function generateSessions(taskId: string, estimateMinutes: number, prefer
   const count = Math.ceil(estimateMinutes / size);
   return Array.from({ length: count }, (_, i) => ({
     id: `${taskId}:s${i + 1}`,
-    taskId,
+    ownerType: "task" as const,
+    ownerId: taskId,
     sequence: i + 1,
     plannedMinutes: i === count - 1 ? estimateMinutes - size * i : size,
     completedMinutes: 0,
@@ -23,4 +24,11 @@ export function generateSessions(taskId: string, estimateMinutes: number, prefer
     updatedAt: nowIso,
     revision: 1,
   }));
+}
+
+/** A new on-demand session for a task or project; its number continues after the owner's existing sessions. */
+export function newSession(ownerType: Session["ownerType"], ownerId: string, existing: Session[], plannedMinutes: number, at: Date): Session {
+  const sequence = Math.max(0, ...existing.filter((s) => s.ownerId === ownerId).map((s) => s.sequence)) + 1;
+  const now = at.toISOString();
+  return { id: `${ownerId}:s${sequence}`, ownerType, ownerId, sequence, plannedMinutes, completedMinutes: 0, status: "unscheduled", createdAt: now, updatedAt: now, revision: 1 };
 }

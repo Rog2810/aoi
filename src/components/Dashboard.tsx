@@ -33,8 +33,9 @@ function Board({ now }: { now: Date }) {
   const { items: reminders, status: reminderState, save: saveReminder } = usePersistentRecords(repos.reminders, () => data.reminders);
   const { items: sessions, status: sessionState, save: saveSession } = usePersistentRecords(repos.sessions, () => data.sessions);
   const { items: timebox, status: timeboxState } = usePersistentRecords(repos.timebox, () => data.timebox);
+  const { items: projects, status: projectState } = usePersistentRecords(repos.projects, () => data.projects);
   const { items: completions, status: completionState, save: saveCompletion, remove: removeCompletion } = usePersistentRecords(repos.completions, () => []);
-  const states = [taskState, reminderState, sessionState, completionState, timeboxState];
+  const states = [taskState, reminderState, sessionState, completionState, timeboxState, projectState];
 
   if (states.includes("loading")) return <p role="status">Loading…</p>;
 
@@ -83,10 +84,10 @@ function Board({ now }: { now: Date }) {
         <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
         <div className={styles.aLeg}><LegendWidget /></div>
         <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
-        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} /></div>
+        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} projects={projects} /></div>
         <div className={`${styles.aRem}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
         <div className={`${styles.aDw}`}><DailyWeeklyWidget /></div>
-        <div className={`${styles.aSes}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={tasks} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
+        <div className={`${styles.aSes}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={[...tasks, ...projects]} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
       </div>
     </div>
   );

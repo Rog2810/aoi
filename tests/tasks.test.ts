@@ -43,6 +43,6 @@ describe("buildTask", () => {
   it("creates the task and its logical sessions", () => {
     const { task: t, sessions } = buildTask(input({ estimate: "180", preferred: "45" }), undefined, new Date(2026, 10, 22));
     expect(sessions).toHaveLength(4);
-    expect(sessions.every((s) => s.taskId === t.id)).toBe(true);
+    expect(sessions.every((s) => s.ownerId === t.id)).toBe(true);
   });
 });

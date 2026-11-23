@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { CalendarEvent, Session, Task, TimeboxEntry } from "@/domain/types";
+import type { CalendarEvent, Project, Session, Task, TimeboxEntry } from "@/domain/types";
 import { addDays, formatMinute, toDateKey } from "@/lib/dates";
 import { occursOn } from "@/lib/events";
 import MarqueeText from "./MarqueeText";
 import styles from "./Dashboard.module.css";
 
-interface Block { id: string; label: string; kind: "Event" | "Session"; start: number; end: number }
-interface Props { now: Date; events: CalendarEvent[]; entries: TimeboxEntry[]; sessions: Session[]; tasks: Task[] }
+interface Block { id: string; label: string; kind: "Event" | "Session"; start: number; end: number; done?: boolean }
+interface Props { now: Date; events: CalendarEvent[]; entries: TimeboxEntry[]; sessions: Session[]; tasks: Task[]; projects: Project[] }
 
 const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" });
 const jumpTo = (id: string) => {
@@ -32,7 +32,7 @@ function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; no
       {blocks.filter((b) => b.end > c0 && b.start < c1).map((b) => {
         const s = Math.max(b.start, c0);
         const e = Math.min(b.end, c1);
-        const detail = `${b.kind}: ${b.label}, ${formatMinute(b.start)} to ${formatMinute(b.end)}`;
+        const detail = `${b.kind}${b.done ? " (completed)" : ""}: ${b.label}, ${formatMinute(b.start)} to ${formatMinute(b.end)}`;
         return (
           <div
             key={b.id}
@@ -41,9 +41,10 @@ function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; no
             aria-label={detail}
             aria-hidden={b.start < c0 || undefined} // second half of a block that crosses noon
             title={detail}
-            className={`${styles.tbBlock} ${b.kind === "Session" ? styles.tbSession : styles.tbEvent}`}
+            className={`${styles.tbBlock} ${b.kind === "Session" ? styles.tbSession : styles.tbEvent} ${b.done ? styles.tbDone : ""}`}
             style={{ top: pct(s), height: `${((e - s) / 720) * 100}%` }}
           >
+            {b.done && <span aria-hidden="true">✓ </span>}
             <MarqueeText className={styles.tbText}>{b.label}</MarqueeText>{" "}
             <span className={styles.tbTime}>{formatMinute(b.start)}–{formatMinute(b.end)}</span>
           </div>
@@ -57,7 +58,7 @@ function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; no
 }
 
 /** Read-only on Home: shows the whole day, no drag or resize. The Timebox page will add editing and overlap validation. */
-export default function TimeboxWidget({ now, events, entries, sessions, tasks }: Props) {
+export default function TimeboxWidget({ now, events, entries, sessions, tasks, projects }: Props) {
   const [clock, setClock] = useState(now);
   const [day, setDay] = useState(toDateKey(now));
   useEffect(() => {
@@ -69,8 +70,9 @@ export default function TimeboxWidget({ now, events, entries, sessions, tasks }:
     ...events.filter((e) => occursOn(e, day)).map((e) => ({ id: e.id, label: e.title, kind: "Event" as const, start: e.startMinute, end: e.endMinute })),
     ...entries.filter((b) => b.date === day && b.sourceType === "session").flatMap((b) => {
       const s = sessions.find((x) => x.id === b.sourceId);
-      const t = tasks.find((x) => x.id === s?.taskId);
-      return s && t ? [{ id: b.id, label: `${t.title}, session ${s.sequence}`, kind: "Session" as const, start: b.startMinute, end: b.endMinute }] : [];
+      const owners: { id: string; title: string }[] = s?.ownerType === "project" ? projects : tasks;
+      const t = owners.find((x) => x.id === s?.ownerId);
+      return s && t ? [{ id: b.id, label: `${t.title}, session ${s.sequence}`, kind: "Session" as const, start: b.startMinute, end: b.endMinute, done: s.status === "completed" }] : [];
     }),
   ];
   const [y, m, d] = day.split("-").map(Number);

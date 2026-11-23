@@ -38,7 +38,7 @@ export const sortByDue = (a: Task, b: Task): number =>
   a.dueDate.localeCompare(b.dueDate) || (a.dueTime ?? "24:00").localeCompare(b.dueTime ?? "24:00") || a.title.localeCompare(b.title);
 
 export function sessionProgress(sessions: Session[], taskId: string) {
-  const own = sessions.filter((s) => s.taskId === taskId);
+  const own = sessions.filter((s) => s.ownerId === taskId);
   return { total: own.length, done: own.filter((s) => s.status === "completed").length };
 }
 
@@ -50,6 +50,7 @@ export interface NewTaskInput {
   preferred: string;
   categoryIds: string[];
   tagIds: string[];
+  projectId?: string;
 }
 
 /** Field name -> message. An empty object means the input is valid. */
@@ -80,9 +81,13 @@ export function buildTask(i: NewTaskInput, parentId: string | undefined, at: Dat
     tagIds: i.tagIds,
     status: "not-started",
     parentId,
+    projectId: i.projectId || undefined,
     createdAt: now,
     updatedAt: now,
     revision: 1,
   };
   return { task, sessions: generateSessions(id, task.estimateMinutes, task.preferredSessionMinutes, now) };
 }
+
+/** A copy with a longer estimate (used when a session is added to a task). */
+export const withMoreEstimate = (t: Task, minutes: number, at: Date): Task => ({ ...t, estimateMinutes: t.estimateMinutes + minutes, updatedAt: at.toISOString(), revision: t.revision + 1 });

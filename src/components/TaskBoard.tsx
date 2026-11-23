@@ -50,7 +50,7 @@ function Board({ now }: { now: Date }) {
               ) : (
                 <ul className={styles.cards}>
                   {tasks.map((t) => (
-                    <TaskCard key={t.id} task={t} parent={d.tasks.find((p) => p.id === t.parentId)} progress={sessionProgress(d.sessions, t.id)} now={now} column={c.id} onStatus={(s) => d.setStatus(t, s)} />
+                    <TaskCard key={t.id} task={t} parent={d.tasks.find((p) => p.id === t.parentId)} project={d.projects.find((p) => p.id === t.projectId)} progress={sessionProgress(d.sessions, t.id)} now={now} column={c.id} onStatus={(s) => d.setStatus(t, s)} />
                   ))}
                 </ul>
               )}
@@ -63,6 +63,7 @@ function Board({ now }: { now: Date }) {
         open={adding}
         onClose={() => setAdding(false)}
         parents={parents}
+        projects={d.projects.filter((p) => p.status !== "archived")}
         onCreate={(input, parentId) => {
           const made = buildTask(input, parentId, new Date());
           d.addTask(made.task, made.sessions);

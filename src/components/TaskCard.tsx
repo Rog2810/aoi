@@ -1,16 +1,16 @@
 "use client";
 import { CATEGORIES } from "@/config/categories";
 import { TAGS } from "@/config/tags";
-import type { Task, TaskStatus } from "@/domain/types";
+import type { Project, Task, TaskStatus } from "@/domain/types";
 import { daysRemaining, describeRemaining, formatDueDate, formatMinute } from "@/lib/dates";
 import type { Column } from "@/lib/tasks";
 import MarqueeText from "./MarqueeText";
 import styles from "./pages.module.css";
 
 const STATUS: Record<TaskStatus, string> = { "not-started": "Not started", "in-progress": "In progress", completed: "Completed", cancelled: "Cancelled" };
-interface Props { task: Task; parent?: Task; progress: { total: number; done: number }; now: Date; column: Column; onStatus: (s: TaskStatus) => void }
+interface Props { task: Task; parent?: Task; project?: Project; progress: { total: number; done: number }; now: Date; column: Column; onStatus: (s: TaskStatus) => void }
 
-export default function TaskCard({ task, parent, progress, now, column, onStatus }: Props) {
+export default function TaskCard({ task, parent, project, progress, now, column, onStatus }: Props) {
   const [h, m] = (task.dueTime ?? "").split(":").map(Number);
   const time = task.dueTime ? formatMinute(h * 60 + m) : "";
   const cats = CATEGORIES.filter((c) => task.categoryIds.includes(c.id));
@@ -21,6 +21,7 @@ export default function TaskCard({ task, parent, progress, now, column, onStatus
     <li className={styles.card} data-marquee-host data-task-id={task.id}>
       <MarqueeText className={styles.cardTitle}>{task.title}</MarqueeText>
       {parent && <div className={styles.muted}>Subtask of {parent.title}</div>}
+            {project && <div className={styles.muted}>Project: {project.title}</div>}
       <div>{formatDueDate(task.dueDate)}{time && `, ${time}`}</div>
       <div><strong>{describeRemaining(daysRemaining(task.dueDate, now))}</strong></div>
       <div className={styles.muted}>{task.estimateMinutes} min estimated · {progress.total ? `${progress.done} of ${progress.total} sessions done` : "No sessions"}</div>

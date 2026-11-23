@@ -1,17 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { Session, Task, TimeboxEntry } from "@/domain/types";
+import type { Session, TimeboxEntry } from "@/domain/types";
 import { formatMinute, toDateKey } from "@/lib/dates";
 import MarqueeText from "./MarqueeText";
 import WidgetFrame from "./WidgetFrame";
 import styles from "./Dashboard.module.css";
 
-/** `entry` is missing when a session was pulled in with "Next session of this task" and is not on today's timebox. */
-interface Item { entry?: TimeboxEntry; session: Session; task: Task }
+/** Whatever a session is for: a task or a project. */
+interface Owner { id: string; title: string }
+interface Item { entry?: TimeboxEntry; session: Session; task: Owner }
 interface Props {
   entries: TimeboxEntry[];
   sessions: Session[];
-  tasks: Task[];
+  tasks: Owner[]; // tasks and projects together
   onProgress: (s: Session) => void; // start, pause, or a longer planned time
   onComplete: (s: Session, minutesSpent: number) => void; // completes it and records the real time spent
 }
@@ -43,13 +44,13 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
     .sort((a, b) => a.startMinute - b.startMinute)
     .flatMap((entry) => {
       const session = sessions.find((s) => s.id === entry.sourceId);
-      const task = tasks.find((t) => t.id === session?.taskId);
+      const task = tasks.find((t) => t.id === session?.ownerId);
       return session && task && session.status !== "completed" ? [{ entry, session, task }] : [];
     });
   const regular = [...pending.filter((i) => !skipped.includes(i.session.id)), ...skipped.flatMap((id) => pending.filter((i) => i.session.id === id))];
 
   const pinnedSession = sessions.find((s) => s.id === pinnedId && s.status !== "completed");
-  const pinnedTask = tasks.find((t) => t.id === pinnedSession?.taskId);
+  const pinnedTask = tasks.find((t) => t.id === pinnedSession?.ownerId);
   const queue: Item[] = [
     ...(pinnedSession && pinnedTask ? [{ entry: scheduledToday.find((e) => e.sourceId === pinnedSession.id), session: pinnedSession, task: pinnedTask }] : []),
     ...regular.filter((i) => i.session.id !== pinnedSession?.id),
@@ -65,7 +66,7 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   // The task's next unfinished session, even if it has no slot on today's timebox.
   const sameTaskNext = current
     ? sessions
-        .filter((s) => s.taskId === current.task.id && s.id !== current.session.id && s.status !== "completed" && s.sequence > current.session.sequence)
+        .filter((s) => s.ownerId === current.task.id && s.id !== current.session.id && s.status !== "completed" && s.sequence > current.session.sequence)
         .sort((a, b) => a.sequence - b.sequence)[0]
     : undefined;
 

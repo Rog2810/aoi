@@ -1,13 +1,13 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import type { CalendarEvent, Session, Task, TimeboxEntry } from "@/domain/types";
+import type { CalendarEvent, Session, TimeboxEntry } from "@/domain/types";
 import { formatMinute } from "@/lib/dates";
 import { parseTime, placementError } from "@/lib/timebox";
 import Modal from "./Modal";
 import styles from "./pages.module.css";
 
 interface Props {
-  target: { session: Session; task: Task } | null;
+  target: { session: Session; title: string } | null;
   entries: TimeboxEntry[];
   events: CalendarEvent[];
   today: string;
@@ -41,7 +41,7 @@ export default function ScheduleDialog({ target, entries, events, today, onClose
     <Modal open={target !== null} title="Schedule session" onClose={close}>
       {target && (
         <form className={styles.form} onSubmit={submit} noValidate>
-          <p>{target.task.title}, session {target.session.sequence} ({target.session.plannedMinutes} min)</p>
+          <p>{target.title}, session {target.session.sequence} ({target.session.plannedMinutes} min)</p>
           <label>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <label>
             Start time

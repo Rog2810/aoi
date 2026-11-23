@@ -1,4 +1,4 @@
-import type { CalendarEvent, Reminder, Session, Task, TimeboxEntry } from "../domain/types";
+import type { CalendarEvent, Reminder, Session, Task, TimeboxEntry, Project } from "../domain/types";
 import { addDays, toDateKey } from "../lib/dates";
 
 /** Deterministic for a given `today`: every date is an offset from it, so the demo never goes stale. No personal data. */
@@ -18,10 +18,11 @@ export function sampleData(today: Date) {
     task("t5", "Final project outline", 21, 120, { preferredSessionMinutes: 60, categoryIds: ["school"], createdAt: stamp(-4) }),
     task("t6", "Book dentist appointment", 6, 20, { categoryIds: ["personal"], createdAt: stamp(-3) }),
     task("t7", "Renew library books", 2, 10, { categoryIds: ["personal"], createdAt: stamp(-5) }),
+    task("t8", "Build the session board", 4, 120, { projectId: "p1", categoryIds: ["personal"] }),
   ];
   // Partial session t1:s2 stays ONE session: 20 of 45 minutes done.
-  const session = (taskId: string, sequence: number, plannedMinutes: number, extra: Partial<Session> = {}): Session => ({
-    id: `${taskId}:s${sequence}`, taskId, sequence, plannedMinutes, completedMinutes: 0, status: "unscheduled", ...base, ...extra,
+  const session = (ownerId: string, sequence: number, plannedMinutes: number, extra: Partial<Session> = {}): Session => ({
+    id: `${ownerId}:s${sequence}`, ownerType: "task", ownerId, sequence, plannedMinutes, completedMinutes: 0, status: "unscheduled", ...base, ...extra,
   });
   const sessions: Session[] = [
     session("t1", 1, 45, { completedMinutes: 45, status: "completed" }),
@@ -32,6 +33,9 @@ export function sampleData(today: Date) {
     session("t5", 2, 60),
     session("t6", 1, 1, { status: "scheduled" }), // 1-minute test session
     session("t6", 2, 1), // 1-minute test session that is NOT on the timebox
+    session("t8", 1, 60),
+    session("p1", 1, 45, { ownerType: "project", status: "scheduled" }),
+    session("p1", 2, 45, { ownerType: "project" }),
   ];
   const event = (id: string, title: string, date: string, startMinute: number, endMinute: number, recurrence: CalendarEvent["recurrence"], overlapPolicy: CalendarEvent["overlapPolicy"]): CalendarEvent =>
     ({ id, title, date, startMinute, endMinute, recurrence, overlapPolicy, ...base });
@@ -48,8 +52,10 @@ export function sampleData(today: Date) {
     entry("b1", d0, "t1:s2", "11:00", "11:45"),
     entry("b2", d0, "t1:s3", "17:00", "17:45"),
     entry("b3", addDays(d0, 1), "t1:s4", "11:00", "11:45"),
+    entry("b4", addDays(d0, 1), "p1:s1", "14:00", "14:45"),
   ];
   const rem = (id: string, title: string, daysAgo: number): Reminder => ({ id, title, lastCompletedDate: addDays(d0, -daysAgo), ...base });
   const reminders = [rem("r1", "Laundry", 6), rem("r2", "General cleaning", 12), rem("r3", "Call family", 3)];
-  return { tasks, sessions, events, timebox, reminders };
+  const projects: Project[] = [{ id: "p1", title: "Aoi app", categoryIds: ["personal"], tagIds: [], status: "active", ...base }];
+  return { tasks, sessions, events, timebox, reminders, projects };
 }

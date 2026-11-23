@@ -1,23 +1,25 @@
 "use client";
 import { useMemo, useState } from "react";
 import { getRepositories } from "@/db/db";
-import type { Session, Task, TaskStatus, TimeboxEntry } from "@/domain/types";
+import type { Project, Session, Task, TaskStatus, TimeboxEntry } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import { toDateKey } from "@/lib/dates";
-import { allSubtasksDone, taskCompletion, withStatus } from "@/lib/tasks";
+import { newSession } from "@/lib/sessions";
+import { allSubtasksDone, taskCompletion, withMoreEstimate, withStatus } from "@/lib/tasks";
 import { usePersistentRecords, type StorageStatus } from "./usePersistentRecords";
 
-/** Loads tasks, sessions, timebox entries and completion records, and changes them the same way everywhere. */
+/** Loads tasks, projects, sessions, timebox entries and completion records, and changes them the same way everywhere. */
 export function useTaskData(now: Date) {
   const repos = getRepositories();
   const seed = useMemo(() => sampleData(now), [now]);
   const t = usePersistentRecords(repos.tasks, () => seed.tasks);
+  const p = usePersistentRecords(repos.projects, () => seed.projects);
   const s = usePersistentRecords(repos.sessions, () => seed.sessions);
   const c = usePersistentRecords(repos.completions, () => []);
   const tb = usePersistentRecords(repos.timebox, () => seed.timebox);
   const [parentPrompt, setParentPrompt] = useState<Task | null>(null);
 
-  const states = [t.status, s.status, c.status, tb.status];
+  const states = [t.status, p.status, s.status, c.status, tb.status];
   const status: StorageStatus = states.includes("loading") ? "loading" : states.includes("error") ? "error" : "ready";
 
   const setStatus = (task: Task, next: TaskStatus) => {
@@ -25,7 +27,7 @@ export function useTaskData(now: Date) {
     void t.save(withStatus(task, next, at));
     if (next === "completed") {
       void c.save(taskCompletion(task.id, at));
-      const parent = t.items.find((p) => p.id === task.parentId);
+      const parent = t.items.find((x) => x.id === task.parentId);
       if (parent && parent.status !== "completed") {
         const after = t.items.map((x) => (x.id === task.id ? { ...x, status: next } : x));
         if (allSubtasksDone(parent, after)) setParentPrompt(parent); // the user decides: there may be unlisted work left
@@ -43,13 +45,22 @@ export function useTaskData(now: Date) {
     void t.save(task);
     sessions.forEach((x) => void s.save(x));
   };
+  const addProject = (project: Project) => void p.save(project);
+
+  /** Creates an on-demand session. For a task, its estimate grows by the session length so the plan stays honest. */
+  const createSession = (ownerType: Session["ownerType"], ownerId: string, minutes: number) => {
+    const at = new Date();
+    void s.save(newSession(ownerType, ownerId, s.items, minutes, at));
+    const task = ownerType === "task" ? t.items.find((x) => x.id === ownerId) : undefined;
+    if (task) void t.save(withMoreEstimate(task, minutes, at));
+  };
 
   /** Places a session on the timebox. Callers validate with placementError first. */
   const scheduleSession = (entry: TimeboxEntry, session: Session) => {
     void tb.save(entry);
     if (session.status === "unscheduled") void s.save({ ...session, status: "scheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
-  /** Undo for a session completed today: removes today's completion record and reopens the session. */
+  /** Undo for a session completed today: removes today's completion record and reopens the session. The timebox will call this. */
   const undoSession = (session: Session) => {
     const at = new Date();
     c.items.filter((r) => r.sourceType === "session" && r.sourceId === session.id && r.localDate === toDateKey(at)).forEach((r) => void c.remove(r.id));
@@ -61,12 +72,15 @@ export function useTaskData(now: Date) {
   return {
     status,
     tasks: t.items,
+    projects: p.items,
     sessions: s.items,
     completions: c.items,
     timebox: tb.items,
     events: seed.events, // sample data until the Events page persists them
     setStatus,
     addTask,
+    addProject,
+    createSession,
     saveSession: s.save,
     scheduleSession,
     undoSession,
