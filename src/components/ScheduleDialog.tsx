@@ -41,7 +41,7 @@ export default function ScheduleDialog({ target, entries, events, today, onClose
     <Modal open={target !== null} title="Schedule session" onClose={close}>
       {target && (
         <form className={styles.form} onSubmit={submit} noValidate>
-          <p>{target.title}, session {target.session.sequence} ({target.session.plannedMinutes} min)</p>
+          <p>{target.title} ({target.session.plannedMinutes} min)</p>
           <label>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <label>
             Start time

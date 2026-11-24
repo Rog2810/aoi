@@ -20,14 +20,13 @@ export function groupSessions(tasks: Task[], projects: Project[], sessions: Sess
   const order = (a: Session, b: Session) => slotKey(a.id).localeCompare(slotKey(b.id)) || a.sequence - b.sequence; // placed ones first, by time
 
   const byTask = { unscheduled: new Map<string, Session[]>(), scheduled: new Map<string, Session[]>() };
-  const waiting = new Map<string, Session[]>();
   const placed = new Map<string, Session[]>();
   for (const s of sessions) {
     if (s.status === "completed") continue;
     const hasSlot = slotKey(s.id) !== "~";
     if (s.ownerType === "project") {
       const p = projects.find((x) => x.id === s.ownerId);
-      if (p && p.status !== "archived") push(hasSlot ? placed : waiting, p.id, s);
+      if (p && p.status !== "archived" && hasSlot) push(placed, p.id, s); // waiting project sessions are not stored: the board adds the next card itself
       continue;
     }
     const t = tasks.find((x) => x.id === s.ownerId);
@@ -46,7 +45,7 @@ export function groupSessions(tasks: Task[], projects: Project[], sessions: Sess
   return {
     unscheduled: taskGroups(byTask.unscheduled),
     scheduled: [...taskGroups(byTask.scheduled), ...projectGroups(placed, false)],
-    projects: projectGroups(waiting, true),
+    projects: projectGroups(new Map(), true),
   };
 }
 

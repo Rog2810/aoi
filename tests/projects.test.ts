@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompletionRecord, Project, Session, Task, TimeboxEntry } from "../src/domain/types";
-import { buildProject, formatDuration, minutesThisWeek, projectSessionsToCreate, validateNewProject, weekStartKey } from "../src/lib/projects";
+import { buildProject, formatDuration, minutesThisWeek, validateNewProject, weekStartKey } from "../src/lib/projects";
 import { newSession } from "../src/lib/sessions";
 import { withMoreEstimate } from "../src/lib/tasks";
 
@@ -27,26 +27,6 @@ describe("validateNewProject / buildProject", () => {
   it("converts hours to minutes and leaves the target unset when blank", () => {
     expect(buildProject(input({ weeklyHours: "2.5" }), AT).weeklyTargetMinutes).toBe(150);
     expect(buildProject(input(), AT).weeklyTargetMinutes).toBeUndefined();
-  });
-});
-
-describe("projectSessionsToCreate", () => {
-  it("gives a new project two one-hour sessions", () => {
-    const made = projectSessionsToCreate([project("p1")], [], [], AT);
-    expect(made.map((s) => s.sequence)).toEqual([1, 2]);
-    expect(made.every((s) => s.plannedMinutes === 60 && s.ownerType === "project")).toBe(true);
-  });
-  it("adds one at the bottom when the top session was scheduled", () => {
-    const sessions = [session("p1", 1, { status: "scheduled" }), session("p1", 2)];
-    const made = projectSessionsToCreate([project("p1")], sessions, [slot("p1:s1")], AT);
-    expect(made.map((s) => s.sequence)).toEqual([3]);
-  });
-  it("does not count completed sessions as waiting", () => {
-    const sessions = [session("p1", 1, { status: "completed" }), session("p1", 2, { status: "completed" })];
-    expect(projectSessionsToCreate([project("p1")], sessions, [], AT).map((s) => s.sequence)).toEqual([3, 4]);
-  });
-  it("skips paused and archived projects", () => {
-    expect(projectSessionsToCreate([project("a", { status: "paused" }), project("b", { status: "archived" })], [], [], AT)).toEqual([]);
   });
 });
 

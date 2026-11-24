@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { toDateKey } from "@/lib/dates";
+import { spentOn } from "@/lib/sessions";
 import { buildTask, columnFor, sessionProgress, sortByDue, type Column } from "@/lib/tasks";
 import Modal from "./Modal";
 import NewTaskDialog from "./NewTaskDialog";
@@ -50,7 +51,7 @@ function Board({ now }: { now: Date }) {
               ) : (
                 <ul className={styles.cards}>
                   {tasks.map((t) => (
-                    <TaskCard key={t.id} task={t} parent={d.tasks.find((p) => p.id === t.parentId)} project={d.projects.find((p) => p.id === t.projectId)} progress={sessionProgress(d.sessions, t.id)} now={now} column={c.id} onStatus={(s) => d.setStatus(t, s)} />
+                    <TaskCard key={t.id} task={t} parent={d.tasks.find((p) => p.id === t.parentId)} project={d.projects.find((p) => p.id === t.projectId)} progress={sessionProgress(d.sessions, t.id)} now={now} column={c.id} onStatus={(s) => d.setStatus(t, s)} spent={spentOn(t.id, d.sessions)} />
                   ))}
                 </ul>
               )}

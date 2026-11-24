@@ -7,7 +7,7 @@ import MarqueeText from "./MarqueeText";
 import styles from "./Dashboard.module.css";
 
 interface Block { id: string; label: string; kind: "Event" | "Session"; start: number; end: number; done?: boolean }
-interface Props { now: Date; events: CalendarEvent[]; entries: TimeboxEntry[]; sessions: Session[]; tasks: Task[]; projects: Project[] }
+interface Props { now: Date; events: CalendarEvent[]; entries: TimeboxEntry[]; sessions: Session[]; tasks: Task[]; projects: Project[]; numbers: Map<string, number> }
 
 const hourLabel = (h: number) => new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: "numeric" });
 const jumpTo = (id: string) => {
@@ -58,7 +58,7 @@ function DayColumn({ from, blocks, nowMin }: { from: number; blocks: Block[]; no
 }
 
 /** Read-only on Home: shows the whole day, no drag or resize. The Timebox page will add editing and overlap validation. */
-export default function TimeboxWidget({ now, events, entries, sessions, tasks, projects }: Props) {
+export default function TimeboxWidget({ now, events, entries, sessions, tasks, projects, numbers }: Props) {
   const [clock, setClock] = useState(now);
   const [day, setDay] = useState(toDateKey(now));
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function TimeboxWidget({ now, events, entries, sessions, tasks, p
       const s = sessions.find((x) => x.id === b.sourceId);
       const owners: { id: string; title: string }[] = s?.ownerType === "project" ? projects : tasks;
       const t = owners.find((x) => x.id === s?.ownerId);
-      return s && t ? [{ id: b.id, label: `${t.title}, session ${s.sequence}`, kind: "Session" as const, start: b.startMinute, end: b.endMinute, done: s.status === "completed" }] : [];
+      return s && t ? [{ id: b.id, label: `${t.title}, session ${numbers.get(s.id) ?? s.sequence}`, kind: "Session" as const, start: b.startMinute, end: b.endMinute, done: s.status === "completed" }] : [];
     }),
   ];
   const [y, m, d] = day.split("-").map(Number);

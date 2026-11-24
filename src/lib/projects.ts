@@ -1,12 +1,9 @@
-import type { CompletionRecord, Project, Session, TimeboxEntry } from "../domain/types";
+import type { CompletionRecord, Project, Session } from "../domain/types";
 import { addDays } from "./dates";
-import { newSession } from "./sessions";
 import { MAX_CATEGORIES, MAX_TAGS } from "./tasks";
 
 /** Projects have no estimate, so their sessions use a default length and are generated, not created by hand. */
 export const PROJECT_SESSION_MINUTES = 60;
-/** How many waiting (unscheduled) sessions every active project keeps ready. */
-export const PROJECT_STACK_SIZE = 2;
 
 export interface NewProjectInput { title: string; categoryIds: string[]; tagIds: string[]; weeklyHours: string }
 
@@ -39,22 +36,6 @@ export function buildProject(i: NewProjectInput, at: Date): Project {
     updatedAt: now,
     revision: 1,
   };
-}
-
-/**
- * Sessions to create so every active project has PROJECT_STACK_SIZE waiting sessions (not completed, no timebox slot).
- * When one is scheduled the count drops, and the next run adds a new one at the bottom of the stack.
- * EXTENSION POINT: smarter generation (for example from the weekly target) belongs here.
- */
-export function projectSessionsToCreate(projects: Project[], sessions: Session[], entries: TimeboxEntry[], at: Date): Session[] {
-  const created: Session[] = [];
-  for (const p of projects.filter((x) => x.status === "active")) {
-    const waiting = sessions.filter((s) => s.ownerId === p.id && s.status !== "completed" && !entries.some((e) => e.sourceType === "session" && e.sourceId === s.id)).length;
-    for (let i = waiting; i < PROJECT_STACK_SIZE; i++) {
-      created.push(newSession("project", p.id, [...sessions, ...created], PROJECT_SESSION_MINUTES, at));
-    }
-  }
-  return created;
 }
 
 export const formatDuration = (minutes: number): string => {

@@ -32,6 +32,7 @@ export interface Session extends Versioned {
   plannedMinutes: number;
   completedMinutes: number;
   status: SessionStatus;
+  lastActiveAt?: string; // when the timer last ran or was paused; used to end a session left paused too long
 }
 
 /** History is kept as records, not a Boolean, so reports and sync can use it later. */

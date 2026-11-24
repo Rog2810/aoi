@@ -26,18 +26,17 @@ describe("groupSessions", () => {
     const entries = [slot("s1", "2026-11-24", 540), slot("s2", "2026-11-23", 1020), slot("s3", "2026-11-23", 660)];
     expect(ids(groupSessions([task("t1")], [], sessions, entries).scheduled[0])).toEqual(["s3", "s2", "s1"]);
   });
-  it("lists waiting project sessions under Projects and keeps projects with none", () => {
-    const sessions = [session("p1:s1", "p1", 1, { ownerType: "project" }), session("p1:s2", "p1", 2, { ownerType: "project" })];
-    const g = groupSessions([], [project("p1"), project("p2")], sessions, []);
-    expect(g.projects.map((x) => x.sessions.length)).toEqual([2, 0]);
+  it("lists every active project under Projects; the board adds each project's next card itself", () => {
+    const g = groupSessions([], [project("p1"), project("p2")], [session("p1:s1", "p1", 1, { ownerType: "project" })], []);
+    expect(g.projects.map((x) => x.sessions.length)).toEqual([0, 0]);
     expect(g.scheduled).toEqual([]);
   });
-  it("moves a placed project session to Scheduled under the project", () => {
+  it("shows a placed project session under Scheduled with the project name", () => {
     const sessions = [session("p1:s1", "p1", 1, { ownerType: "project" }), session("p1:s2", "p1", 2, { ownerType: "project" })];
     const g = groupSessions([], [project("p1")], sessions, [slot("p1:s2", "2026-11-23", 540)]);
-    expect(ids(g.projects[0])).toEqual(["p1:s1"]);
     expect(g.scheduled[0]).toMatchObject({ kind: "project" });
     expect(ids(g.scheduled[0])).toEqual(["p1:s2"]);
+    expect(g.projects[0].sessions).toEqual([]);
   });
   it("hides completed sessions, closed tasks and archived projects", () => {
     const sessions = [session("a", "t1", 1, { status: "completed" }), session("b", "t2", 1), session("c", "t3", 1), session("d", "p1", 1, { ownerType: "project" })];

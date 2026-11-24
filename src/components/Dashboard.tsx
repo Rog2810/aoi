@@ -6,7 +6,9 @@ import type { Session, TaskStatus } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import type { WeekStart } from "@/lib/calendar";
 import { toDateKey } from "@/lib/dates";
-import { taskCompletion, withStatus } from "@/lib/tasks";
+import { taskCompletion, withStatus, withMoreEstimate } from "@/lib/tasks";
+import { sessionNumbers } from "@/lib/sessionNumbers";
+import { useSessionLifecycle } from "./useSessionLifecycle";
 import CalendarWidget from "./CalendarWidget";
 import { DailyWeeklyWidget, LegendWidget, RemindersWidget } from "./MiniWidgets";
 import Nav from "./Nav";
@@ -36,8 +38,11 @@ function Board({ now }: { now: Date }) {
   const { items: projects, status: projectState } = usePersistentRecords(repos.projects, () => data.projects);
   const { items: completions, status: completionState, save: saveCompletion, remove: removeCompletion } = usePersistentRecords(repos.completions, () => []);
   const states = [taskState, reminderState, sessionState, completionState, timeboxState, projectState];
+  const { split } = useSessionLifecycle({ ready: !states.includes("loading"), sessions, timebox, saveSession, saveCompletion });
 
   if (states.includes("loading")) return <p role="status">Loading…</p>;
+
+  const numbers = sessionNumbers(sessions, timebox, completions);
 
   const setStatus = (id: string, status: TaskStatus) => {
     const t = tasks.find((x) => x.id === id);
@@ -66,6 +71,13 @@ function Board({ now }: { now: Date }) {
       createdAt: at.toISOString(),
     });
   };
+  /** "Keep working": the session gets longer, and so does the task's estimate, because sessions add up to the task's time. */
+  const extendSession = (s: Session, workedMinutes: number, extra: number) => {
+    const at = new Date();
+    void saveSession({ ...s, plannedMinutes: s.plannedMinutes + extra, completedMinutes: workedMinutes, status: "in-progress", lastActiveAt: at.toISOString(), updatedAt: at.toISOString(), revision: s.revision + 1 });
+    const task = s.ownerType === "task" ? tasks.find((t) => t.id === s.ownerId) : undefined;
+    if (task) void saveTask(withMoreEstimate(task, extra, at));
+  };
 
   return (
     <div className={styles.shell}>
@@ -84,10 +96,10 @@ function Board({ now }: { now: Date }) {
         <div className={styles.aCal}><CalendarWidget now={now} tasks={tasks} weekStart={weekStart} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
         <div className={styles.aLeg}><LegendWidget /></div>
         <div className={`${styles.aTasks} ${styles.fill}`}><TasksEventsWidget tasks={tasks} events={data.events} now={now} onStatus={setStatus} activeTaskId={activeTask} onActiveTask={setActiveTask} /></div>
-        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} projects={projects} /></div>
+        <div className={styles.aTime}><TimeboxWidget now={now} events={data.events} entries={data.timebox} sessions={sessions} tasks={tasks} projects={projects} numbers={numbers} /></div>
         <div className={`${styles.aRem}`}><RemindersWidget reminders={reminders} now={now} onDone={markDone} /></div>
         <div className={`${styles.aDw}`}><DailyWeeklyWidget /></div>
-        <div className={`${styles.aSes}`}><SessionManagerWidget entries={data.timebox} sessions={sessions} tasks={[...tasks, ...projects]} onProgress={(s) => void saveSession(s)} onComplete={completeSession} /></div>
+        <div className={`${styles.aSes}`}><SessionManagerWidget entries={timebox} sessions={sessions} tasks={[...tasks, ...projects]} numbers={numbers} onProgress={(s) => void saveSession(s)} onComplete={completeSession} onSplit={split} onExtend={extendSession} /></div>
       </div>
     </div>
   );

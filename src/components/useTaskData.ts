@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { getRepositories } from "@/db/db";
 import type { Project, Session, Task, TaskStatus, TimeboxEntry } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import { toDateKey } from "@/lib/dates";
 import { newSession } from "@/lib/sessions";
 import { allSubtasksDone, taskCompletion, withMoreEstimate, withStatus } from "@/lib/tasks";
-import { projectSessionsToCreate } from "@/lib/projects";
+import { useSessionLifecycle } from "./useSessionLifecycle";
 import { usePersistentRecords, type StorageStatus } from "./usePersistentRecords";
 
 /** Loads tasks, projects, sessions, timebox entries and completion records, and changes them the same way everywhere. */
@@ -22,13 +22,7 @@ export function useTaskData(now: Date) {
 
   const states = [t.status, p.status, s.status, c.status, tb.status];
   const status: StorageStatus = states.includes("loading") ? "loading" : states.includes("error") ? "error" : "ready";
-
-  // Projects have no fixed session list: every active project keeps two waiting sessions. When one is scheduled,
-  // the next run adds a new one at the bottom. Ids are deterministic, so a repeated run is harmless.
-  useEffect(() => {
-    if (status !== "ready") return;
-    projectSessionsToCreate(p.items, s.items, tb.items, new Date()).forEach((x) => void s.save(x));
-  }, [status, p.items, s.items, tb.items, s.save]);
+  useSessionLifecycle({ ready: status === "ready", sessions: s.items, timebox: tb.items, saveSession: s.save, saveCompletion: c.save });
 
   const setStatus = (task: Task, next: TaskStatus) => {
     const at = new Date();
@@ -69,10 +63,11 @@ export function useTaskData(now: Date) {
     if (session.status === "unscheduled") void s.save({ ...session, status: "scheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
 
-  /** Removes a session's slot. A session that was only scheduled goes back to unscheduled; a started one keeps its progress. */
+  /** Removes a session's slot. A project session exists only while scheduled, so it is deleted; a task session goes back to waiting. */
   const unscheduleSession = (session: Session) => {
     tb.items.filter((e) => e.sourceType === "session" && e.sourceId === session.id).forEach((e) => void tb.remove(e.id));
-    if (session.status === "scheduled") void s.save({ ...session, status: "unscheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
+    if (session.ownerType === "project") void s.remove(session.id);
+    else if (session.status === "scheduled") void s.save({ ...session, status: "unscheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
 
   /** Undo for a session completed today: removes today's completion record and reopens the session. The timebox will call this. */

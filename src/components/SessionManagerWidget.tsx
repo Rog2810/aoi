@@ -2,19 +2,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, TimeboxEntry } from "@/domain/types";
 import { formatMinute, toDateKey } from "@/lib/dates";
+import { idleMinutes, PAUSE_LIMIT_MINUTES, PAUSE_NUDGE_MINUTES } from "@/lib/sessions";
 import MarqueeText from "./MarqueeText";
 import WidgetFrame from "./WidgetFrame";
 import styles from "./Dashboard.module.css";
 
 /** Whatever a session is for: a task or a project. */
 interface Owner { id: string; title: string }
+/** `entry` is missing when a session was pulled in with "Next session of this task" and is not on today's timebox. */
 interface Item { entry?: TimeboxEntry; session: Session; task: Owner }
 interface Props {
   entries: TimeboxEntry[];
   sessions: Session[];
   tasks: Owner[]; // tasks and projects together
-  onProgress: (s: Session) => void; // start, pause, or a longer planned time
-  onComplete: (s: Session, minutesSpent: number) => void; // completes it and records the real time spent
+  numbers: Map<string, number>; // display numbers from sessionNumbers()
+  onProgress: (s: Session) => void; // start, pause or a minute of progress
+  onComplete: (s: Session, minutesSpent: number) => void; // finished: completes it and records the real time spent
+  onSplit: (s: Session, workedMinutes: number) => void; // left unfinished: the worked part completes, the rest is split off
+  onExtend: (s: Session, workedMinutes: number, extraMinutes: number) => void; // longer session, bigger task estimate
 }
 
 const R = 44;
@@ -26,7 +31,7 @@ const EXTEND_MINUTES = 15;
  * Timebox page changes what appears here. completedMinutes always means REAL time worked.
  * EXTENSION POINT: auto-start at the scheduled time belongs in this component.
  */
-export default function SessionManagerWidget({ entries, sessions, tasks, onProgress, onComplete }: Props) {
+export default function SessionManagerWidget({ entries, sessions, tasks, numbers, onProgress, onComplete, onSplit, onExtend }: Props) {
   const [skipped, setSkipped] = useState<string[]>([]); // ids sent to the back of today's queue, in skip order
   const [pinnedId, setPinnedId] = useState<string | null>(null); // chosen via "Next session of this task"
   const [elapsed, setElapsed] = useState(0); // seconds already worked in the current session
@@ -37,6 +42,8 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   const skipBtnRef = useRef<HTMLButtonElement>(null);
   const skipFirstRef = useRef<HTMLButtonElement>(null);
   const skipWasOpen = useRef(false);
+  const savedMin = useRef(0); // whole minutes already saved for the current session
+  const num = (s: Session) => numbers.get(s.id) ?? s.sequence;
 
   const today = toDateKey(new Date());
   const scheduledToday = entries.filter((e) => e.date === today && e.sourceType === "session");
@@ -62,21 +69,30 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   const live = elapsed + (runningSince !== null ? (Date.now() - runningSince) / 1000 : 0);
   const due = Boolean(current) && total > 0 && live >= total; // time is up: the user chooses what happens next
   const frac = total ? Math.min(1, live / total) : 0;
+  const workedNow = Math.round(live / 60);
 
-  // The task's next unfinished session, even if it has no slot on today's timebox.
+  // The owner's next unfinished session by display number, even if it has no slot on today's timebox.
   const sameTaskNext = current
     ? sessions
-        .filter((s) => s.ownerId === current.task.id && s.id !== current.session.id && s.status !== "completed" && s.sequence > current.session.sequence)
-        .sort((a, b) => a.sequence - b.sequence)[0]
+        .filter((s) => s.ownerId === current.task.id && s.id !== current.session.id && s.status !== "completed" && num(s) > num(current.session))
+        .sort((a, b) => num(a) - num(b))[0]
     : undefined;
 
-  const save = (s: Session, completedMinutes: number, status: Session["status"]) =>
-    onProgress({ ...s, completedMinutes, status, updatedAt: new Date().toISOString(), revision: s.revision + 1 });
+  const save = (s: Session, completedMinutes: number, status: Session["status"]) => {
+    const at = new Date().toISOString();
+    onProgress({ ...s, completedMinutes, status, lastActiveAt: at, updatedAt: at, revision: s.revision + 1 });
+  };
+
+  // A paused (started) session: show a reminder after a few minutes. The session itself is ended elsewhere, after an hour.
+  const idle = current && runningSince === null ? idleMinutes(current.session, new Date()) : null;
+  const paused = idle !== null && idle >= PAUSE_NUDGE_MINUTES;
+  const waiting = current?.session.status === "in-progress" && runningSince === null;
 
   // Start from the saved whole minutes whenever a different session becomes current.
   const currentId = current?.session.id;
   useEffect(() => {
     setElapsed(current ? current.session.completedMinutes * 60 : 0);
+    savedMin.current = current ? current.session.completedMinutes : 0;
     setRunningSince(null);
     setSkipChoice(false);
   }, [currentId]);
@@ -88,6 +104,23 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
     return () => clearInterval(id);
   }, [runningSince]);
 
+  // Re-render every 30 seconds while a started session sits paused, so the reminder stays current.
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [waiting]);
+
+  // While running, save the whole minutes worked as they pass, so a closed tab loses at most a minute.
+  useEffect(() => {
+    if (!current || runningSince === null) return;
+    const whole = Math.min(current.session.plannedMinutes, Math.floor(live / 60));
+    if (whole > savedMin.current) {
+      savedMin.current = whole;
+      save(current.session, whole, "in-progress");
+    }
+  });
+
   // Time is up: stop the clock and save the minutes worked. The session is NOT completed until the user decides.
   useEffect(() => {
     if (current && runningSince !== null && live >= total) {
@@ -97,6 +130,16 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
       save(current.session, Math.floor(total / 60), "in-progress");
     }
   });
+
+  // A paused session is easy to forget: put it in the tab title too.
+  useEffect(() => {
+    if (!paused) return;
+    const title = document.title;
+    document.title = `⏸ Paused · ${title}`;
+    return () => {
+      document.title = title;
+    };
+  }, [paused]);
 
   // Focus handling: into the skip choice when it opens, back to the Skip button when it closes, to the first end option when time is up.
   useEffect(() => {
@@ -112,15 +155,14 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
     if (!current) return;
     // TODO(feedback): completion sound effect / animation goes here (for example a soft chime and a pulse on the ring).
     // Check the reduced-motion preference and a future "sound effects" setting before playing or animating anything.
-    onComplete(current.session, Math.round(live / 60)); // real time worked, including earlier runs of this session
+    onComplete(current.session, workedNow); // real time worked, including earlier runs of this session
     setRunningSince(null);
     setSkipChoice(false);
   };
   const keepWorking = () => {
     if (!current) return;
-    const s = current.session;
-    // The expected length grows by 15 minutes and is saved with the session, so it survives a reload.
-    onProgress({ ...s, plannedMinutes: s.plannedMinutes + EXTEND_MINUTES, completedMinutes: Math.floor(live / 60), status: "in-progress", updatedAt: new Date().toISOString(), revision: s.revision + 1 });
+    // The session gets 15 minutes longer and so does the task's estimate; both are saved, so they survive a reload.
+    onExtend(current.session, Math.floor(live / 60), EXTEND_MINUTES);
     setRunningSince(Date.now());
   };
   const goNextOfTask = () => {
@@ -132,20 +174,26 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
     if (!current) return;
     const s = current.session;
     if (runningSince === null) {
+      savedMin.current = Math.floor(elapsed / 60);
       setRunningSince(Date.now());
       save(s, s.completedMinutes, "in-progress");
     } else {
       setElapsed(live);
       setRunningSince(null);
-      save(s, Math.min(s.plannedMinutes, Math.floor(live / 60)), "in-progress"); // a partial session stays ONE session
+      save(s, Math.min(s.plannedMinutes, Math.floor(live / 60)), "in-progress"); // a pause is a break: still the same session
     }
   };
   const skipSession = () => {
-    if (!current || queue.length < 2) return;
-    if (runningSince !== null) save(current.session, Math.min(current.session.plannedMinutes, Math.floor(live / 60)), "in-progress");
+    if (!current) return;
+    setRunningSince(null);
+    setSkipChoice(false);
+    if (workedNow > 0) {
+      onSplit(current.session, Math.min(current.session.plannedMinutes, workedNow)); // worked on, so the worked part is its own session
+      return;
+    }
+    if (queue.length < 2) return;
     if (current.session.id === pinnedSession?.id) setPinnedId(null);
     else setSkipped((ids) => [...ids.filter((id) => id !== current.session.id), current.session.id]);
-    setSkipChoice(false);
   };
 
   const remaining = Math.max(0, Math.ceil(total - live));
@@ -153,13 +201,14 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
   const describe = (i: Item) => (
     <>
       <MarqueeText className={styles.strong}>{i.task.title}</MarqueeText>
-      <div>Session {i.session.sequence}</div>
+      <div>Session {num(i.session)}</div>
       <div>
         {i.entry ? `${formatMinute(i.entry.startMinute)}–${formatMinute(i.entry.endMinute)}` : "Not on today's timebox"} · {i.session.plannedMinutes} min planned
         {i.session.completedMinutes > 0 ? `, ${i.session.completedMinutes} done` : ""}
       </div>
     </>
   );
+  const startLabel = runningSince !== null ? "Pause" : current?.session.status === "in-progress" ? "Resume" : "Start";
 
   return (
     <WidgetFrame title="Session" id="ses-h">
@@ -173,6 +222,11 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
           {next ? describe(next) : <span className={styles.muted}>None</span>}
         </div>
       </div>
+      {paused && idle !== null && (
+        <p role="status" className={styles.sesNote}>
+          Paused for about {Math.floor(idle / 5) * 5} min. This session ends on its own after {PAUSE_LIMIT_MINUTES} min paused.
+        </p>
+      )}
       <div className={styles.sesDials}>
         <div className={styles.ring} role="progressbar" aria-label="Session progress" aria-valuemin={0} aria-valuemax={Math.max(total, 1)} aria-valuenow={Math.min(Math.max(total, 1), Math.floor(live))} aria-valuetext={`${clock} remaining`}>
           <svg viewBox="0 0 100 100" aria-hidden="true">
@@ -183,23 +237,23 @@ export default function SessionManagerWidget({ entries, sessions, tasks, onProgr
         </div>
         {due && current ? (
           <div className={styles.sesEnd} role="group" aria-label="Session time is up">
-            <p role="status">Time's up for Session {current.session.sequence}. What next?</p>
+            <p role="status">Time's up for Session {num(current.session)}. What next?</p>
             <button ref={endRef} onClick={keepWorking}>Keep working (+{EXTEND_MINUTES} min)</button>
-            {sameTaskNext && <button onClick={goNextOfTask}>Next session of this task (Session {sameTaskNext.sequence})</button>}
+            {sameTaskNext && <button onClick={goNextOfTask}>Next session of this task (Session {num(sameTaskNext)})</button>}
             <button onClick={finish}>Finish session</button>
           </div>
         ) : skipChoice && current ? (
           <div className={styles.sesEnd} role="group" aria-label="Finish or skip this session">
             {/* change text for completion */}
-            <p>Session {current.session.sequence}: finishing saves the time worked so far; skipping moves it to the end of today's queue.</p>
+            <p>Session {num(current.session)}: finishing counts it as done. Skipping leaves it for later: time already worked is saved as its own session and the rest is kept.</p>
             <button ref={skipFirstRef} onClick={finish}>Finish session</button>
-            {queue.length > 1 && <button onClick={skipSession}>Skip session</button>}
+            {(queue.length > 1 || workedNow > 0) && <button onClick={skipSession}>Skip session</button>}
             <button onClick={() => setSkipChoice(false)}>Cancel</button>
           </div>
         ) : (
           <>
-            <button className={styles.dial} onClick={toggle} disabled={!current} aria-label={runningSince === null ? "Start session" : "Pause session"}>
-              {runningSince === null ? "Start" : "Pause"}
+            <button className={styles.dial} onClick={toggle} disabled={!current} aria-label={`${startLabel} session`}>
+              {startLabel}
             </button>
             <button ref={skipBtnRef} className={styles.dial} onClick={() => setSkipChoice(true)} disabled={!current} aria-label="Skip or finish session">Skip</button>
           </>

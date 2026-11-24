@@ -5,12 +5,13 @@ import type { Project, Task, TaskStatus } from "@/domain/types";
 import { daysRemaining, describeRemaining, formatDueDate, formatMinute } from "@/lib/dates";
 import type { Column } from "@/lib/tasks";
 import MarqueeText from "./MarqueeText";
+import TimeProgress from "./TimeProgress";
 import styles from "./pages.module.css";
 
 const STATUS: Record<TaskStatus, string> = { "not-started": "Not started", "in-progress": "In progress", completed: "Completed", cancelled: "Cancelled" };
-interface Props { task: Task; parent?: Task; project?: Project; progress: { total: number; done: number }; now: Date; column: Column; onStatus: (s: TaskStatus) => void }
+interface Props { task: Task; parent?: Task; project?: Project; progress: { total: number; done: number }; now: Date; column: Column; onStatus: (s: TaskStatus) => void; spent: number }
 
-export default function TaskCard({ task, parent, project, progress, now, column, onStatus }: Props) {
+export default function TaskCard({ task, parent, project, progress, now, column, onStatus, spent }: Props) {
   const [h, m] = (task.dueTime ?? "").split(":").map(Number);
   const time = task.dueTime ? formatMinute(h * 60 + m) : "";
   const cats = CATEGORIES.filter((c) => task.categoryIds.includes(c.id));
@@ -25,6 +26,7 @@ export default function TaskCard({ task, parent, project, progress, now, column,
       <div>{formatDueDate(task.dueDate)}{time && `, ${time}`}</div>
       <div><strong>{describeRemaining(daysRemaining(task.dueDate, now))}</strong></div>
       <div className={styles.muted}>{task.estimateMinutes} min estimated · {progress.total ? `${progress.done} of ${progress.total} sessions done` : "No sessions"}</div>
+      <TimeProgress spent={spent} estimate={task.estimateMinutes} label={`Time spent on ${task.title}`} />
       {(cats.length > 0 || tags.length > 0) && (
         <div className={styles.chips}>
           {cats.map((c) => <span key={c.id} className={styles.chip}><span className={styles.swatch} style={{ background: c.color }} aria-hidden="true" />{c.name}</span>)}

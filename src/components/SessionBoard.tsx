@@ -1,16 +1,18 @@
 "use client";
 import { useState } from "react";
 import { CATEGORIES } from "@/config/categories";
-import type { Session } from "@/domain/types";
+import type { Project, Session } from "@/domain/types";
 import { addDays, daysRemaining, describeRemaining, formatDueDate, formatMinute, toDateKey } from "@/lib/dates";
-import { buildProject, formatDuration, minutesThisWeek } from "@/lib/projects";
-import { remainingMinutes } from "@/lib/sessions";
+import { buildProject, formatDuration, minutesThisWeek, PROJECT_SESSION_MINUTES } from "@/lib/projects";
 import { groupSessions, segmentsFor, type SessionColumn, type SessionGroup } from "@/lib/sessionBoard";
+import { sessionNumbers, settledCount } from "@/lib/sessionNumbers";
+import { newSession, remainingMinutes, spentOn } from "@/lib/sessions";
 import MarqueeText from "./MarqueeText";
 import NewProjectDialog from "./NewProjectDialog";
 import NewSessionDialog from "./NewSessionDialog";
 import ScheduleDialog from "./ScheduleDialog";
 import SessionStack, { type StackItem } from "./SessionStack";
+import TimeProgress from "./TimeProgress";
 import { useNow } from "./useNow";
 import { useTaskData } from "./useTaskData";
 import styles from "./pages.module.css";
@@ -37,6 +39,8 @@ function Board({ now }: { now: Date }) {
 
   const today = toDateKey(now);
   const groups = groupSessions(d.tasks, d.projects, d.sessions, d.timebox);
+  const numbers = sessionNumbers(d.sessions, d.timebox, d.completions);
+  const numOf = (s: Session) => numbers.get(s.id) ?? s.sequence;
   const openTasks = d.tasks.filter((t) => t.status === "not-started" || t.status === "in-progress");
   const firstSlot = (id: string) =>
     d.timebox.filter((e) => e.sourceType === "session" && e.sourceId === id).sort((a, b) => a.date.localeCompare(b.date) || a.startMinute - b.startMinute)[0];
@@ -47,24 +51,44 @@ function Board({ now }: { now: Date }) {
     return `${name} ${formatMinute(start)} to ${formatMinute(end)}`;
   };
 
-  /** One session card: Unschedule when placed, otherwise a Schedule button (the keyboard alternative to dragging). */
+  /** One session card: Unschedule when placed (not while it is being worked), otherwise a Schedule button (the keyboard alternative to dragging). */
   const itemFor = (s: Session, title: string, i: number): StackItem => {
     const slot = firstSlot(s.id);
+    const label = `${title}, session ${numOf(s)}`;
     return {
       id: s.id,
       grip: true,
       body: (
         <>
           <div className={styles.tx}>
-            <div><strong>Session {s.sequence}</strong> · {s.plannedMinutes} min{slot ? " planned" : ""}</div>
+            <div><strong>Session {numOf(s)}</strong> · {s.plannedMinutes} min{slot ? " planned" : ""}</div>
             {s.completedMinutes > 0 && <div className={styles.muted}>{s.completedMinutes} done · {remainingMinutes(s)} left</div>}
             <div className={styles.muted}>{slot ? slotLabel(slot.date, slot.startMinute, slot.endMinute) : `${i === 0 ? "Next · " : ""}Not scheduled`}</div>
           </div>
           {slot ? (
-            <button onClick={() => d.unscheduleSession(s)} aria-label={`Unschedule ${title}, session ${s.sequence}`}>Unschedule</button>
+            s.status !== "in-progress" && <button onClick={() => d.unscheduleSession(s)} aria-label={`Unschedule ${label}`}>Unschedule</button>
           ) : (
-            <button onClick={() => setTarget({ session: s, title })} aria-label={`Schedule ${title}, session ${s.sequence}`}>Schedule</button>
+            <button onClick={() => setTarget({ session: s, title: label })} aria-label={`Schedule ${label}`}>Schedule</button>
           )}
+        </>
+      ),
+    };
+  };
+
+  /** A project's single waiting card. It is not stored: scheduling it creates the real session, and unscheduling deletes it. */
+  const projectTop = (p: Project): StackItem => {
+    const n = settledCount(p.id, d.sessions, d.timebox, d.completions) + 1;
+    const label = `${p.title}, session ${n}`;
+    return {
+      id: `next-${p.id}`,
+      grip: true,
+      body: (
+        <>
+          <div className={styles.tx}>
+            <div><strong>Session {n}</strong> · {PROJECT_SESSION_MINUTES} min</div>
+            <div className={styles.muted}>Next · Not scheduled</div>
+          </div>
+          <button onClick={() => setTarget({ session: newSession("project", p.id, d.sessions, PROJECT_SESSION_MINUTES, new Date()), title: label })} aria-label={`Schedule ${label}`}>Schedule</button>
         </>
       ),
     };
@@ -91,7 +115,7 @@ function Board({ now }: { now: Date }) {
           </li>
         );
       }
-      const worked = d.sessions.filter((s) => s.ownerId === owner.id).reduce((n, s) => n + s.completedMinutes, 0);
+      const worked = spentOn(owner.id, d.sessions);
       const open = d.tasks.filter((t) => t.projectId === owner.id && (t.status === "not-started" || t.status === "in-progress")).length;
       const goal = g.project.weeklyTargetMinutes;
       const week = goal ? minutesThisWeek(owner.id, d.sessions, d.completions, today, WEEK_START) : 0;
@@ -106,7 +130,7 @@ function Board({ now }: { now: Date }) {
             </div>
           ) : null}
           {chips}
-          {stack || <p className={styles.muted}>{g.project.status === "paused" ? "Paused. Resume it to get sessions." : "Getting sessions ready…"}</p>}
+          {g.project.status === "active" ? <SessionStack items={[projectTop(g.project)]} /> : <p className={styles.muted}>Paused. Resume it to plan sessions.</p>}
         </li>
       );
     }
@@ -130,6 +154,7 @@ function Board({ now }: { now: Date }) {
           </span>
           <span className={styles.muted}>{finished} of {segs.length} sessions done</span>
         </div>
+        <TimeProgress spent={spentOn(owner.id, d.sessions)} estimate={g.task.estimateMinutes} label={`Time spent on ${owner.title}`} />
         {stack}
       </li>
     );
