@@ -1,56 +1,47 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import type { Project, Task } from "@/domain/types";
+import type { Task } from "@/domain/types";
 import Modal from "./Modal";
 import styles from "./pages.module.css";
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  tasks: Task[];
-  projects: Project[];
-  onCreate: (ownerType: "task" | "project", ownerId: string, minutes: number) => void;
-}
+interface Props { open: boolean; onClose: () => void; tasks: Task[]; onCreate: (taskId: string, minutes: number) => void }
 
-export default function NewSessionDialog({ open, onClose, tasks, projects, onCreate }: Props) {
-  const [forId, setForId] = useState(""); // "task:<id>" or "project:<id>"
+export default function NewSessionDialog({ open, onClose, tasks, onCreate }: Props) {
+  const [taskId, setTaskId] = useState("");
   const [length, setLength] = useState("45");
   const [error, setError] = useState("");
-  const sep = forId.indexOf(":");
-  const ownerType = forId.slice(0, sep) === "project" ? "project" : "task";
-  const ownerId = forId.slice(sep + 1);
-  const task = sep >= 0 && ownerType === "task" ? tasks.find((t) => t.id === ownerId) : undefined;
+  const task = tasks.find((t) => t.id === taskId);
   const minutes = Number(length);
   const valid = Number.isInteger(minutes) && minutes >= 1 && minutes <= 1440;
 
-  const pick = (value: string) => {
-    setForId(value);
-    const t = tasks.find((x) => `task:${x.id}` === value);
+  const pick = (id: string) => {
+    setTaskId(id);
+    const t = tasks.find((x) => x.id === id);
     if (t?.preferredSessionMinutes) setLength(String(t.preferredSessionMinutes));
   };
   const close = () => {
-    setForId("");
+    setTaskId("");
     setLength("45");
     setError("");
     onClose();
   };
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (sep < 0) return setError("Choose a task or project.");
+    if (!task) return setError("Choose a task.");
     if (!valid) return setError("Enter whole minutes from 1 to 1440.");
-    onCreate(ownerType, ownerId, minutes);
+    onCreate(task.id, minutes);
     close();
   };
 
   return (
     <Modal open={open} title="New session" onClose={close}>
       <form className={styles.form} onSubmit={submit} noValidate>
+        <p className={styles.muted}>Projects generate their own sessions, so this is for tasks.</p>
         <label>
-          For
-          <select value={forId} onChange={(e) => pick(e.target.value)}>
+          Task
+          <select value={taskId} onChange={(e) => pick(e.target.value)}>
             <option value="">Choose…</option>
-            <optgroup label="Tasks">{tasks.map((t) => <option key={t.id} value={`task:${t.id}`}>{t.title}</option>)}</optgroup>
-            <optgroup label="Projects">{projects.map((p) => <option key={p.id} value={`project:${p.id}`}>{p.title}</option>)}</optgroup>
+            {tasks.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
           </select>
         </label>
         <label>

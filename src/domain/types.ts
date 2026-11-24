@@ -82,4 +82,5 @@ export interface Project extends Versioned {
   categoryIds: string[];
   tagIds: string[];
   status: "active" | "paused" | "archived";
+  weeklyTargetMinutes?: number; // optional; when absent nothing about a target is shown
 }

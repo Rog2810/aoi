@@ -3,7 +3,7 @@ import { useState } from "react";
 import { CATEGORIES } from "@/config/categories";
 import type { Session } from "@/domain/types";
 import { addDays, daysRemaining, describeRemaining, formatDueDate, formatMinute, toDateKey } from "@/lib/dates";
-import { buildProject } from "@/lib/projects";
+import { buildProject, formatDuration, minutesThisWeek } from "@/lib/projects";
 import { remainingMinutes } from "@/lib/sessions";
 import { groupSessions, segmentsFor, type SessionColumn, type SessionGroup } from "@/lib/sessionBoard";
 import MarqueeText from "./MarqueeText";
@@ -20,6 +20,7 @@ const COLUMNS: { id: SessionColumn; title: string }[] = [
   { id: "scheduled", title: "Scheduled" },
   { id: "projects", title: "Projects" },
 ];
+const WEEK_START = 1 as const; // TODO(settings): read Monday/Sunday from the preferences repository
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export default function SessionBoard() {
@@ -37,7 +38,6 @@ function Board({ now }: { now: Date }) {
   const today = toDateKey(now);
   const groups = groupSessions(d.tasks, d.projects, d.sessions, d.timebox);
   const openTasks = d.tasks.filter((t) => t.status === "not-started" || t.status === "in-progress");
-  const liveProjects = d.projects.filter((p) => p.status !== "archived");
   const firstSlot = (id: string) =>
     d.timebox.filter((e) => e.sourceType === "session" && e.sourceId === id).sort((a, b) => a.date.localeCompare(b.date) || a.startMinute - b.startMinute)[0];
 
@@ -47,7 +47,7 @@ function Board({ now }: { now: Date }) {
     return `${name} ${formatMinute(start)} to ${formatMinute(end)}`;
   };
 
-  /** One session card: a slot label when placed, otherwise a Schedule button (the keyboard alternative to dragging). */
+  /** One session card: Unschedule when placed, otherwise a Schedule button (the keyboard alternative to dragging). */
   const itemFor = (s: Session, title: string, i: number): StackItem => {
     const slot = firstSlot(s.id);
     return {
@@ -60,17 +60,21 @@ function Board({ now }: { now: Date }) {
             {s.completedMinutes > 0 && <div className={styles.muted}>{s.completedMinutes} done · {remainingMinutes(s)} left</div>}
             <div className={styles.muted}>{slot ? slotLabel(slot.date, slot.startMinute, slot.endMinute) : `${i === 0 ? "Next · " : ""}Not scheduled`}</div>
           </div>
-          {!slot && <button onClick={() => setTarget({ session: s, title })} aria-label={`Schedule ${title}, session ${s.sequence}`}>Schedule</button>}
+          {slot ? (
+            <button onClick={() => d.unscheduleSession(s)} aria-label={`Unschedule ${title}, session ${s.sequence}`}>Unschedule</button>
+          ) : (
+            <button onClick={() => setTarget({ session: s, title })} aria-label={`Schedule ${title}, session ${s.sequence}`}>Schedule</button>
+          )}
         </>
       ),
     };
   };
 
-  const card = (g: SessionGroup) => {
+  const card = (col: SessionColumn) => (g: SessionGroup) => {
     const owner = g.kind === "task" ? g.task : g.project;
     const cats = CATEGORIES.filter((c) => owner.categoryIds.includes(c.id));
     const tall = g.sessions.some((s) => s.completedMinutes > 0);
-    const stack = <SessionStack items={g.sessions.map((s, i) => itemFor(s, owner.title, i))} height={tall ? 76 : 64} />;
+    const stack = g.sessions.length > 0 && <SessionStack items={g.sessions.map((s, i) => itemFor(s, owner.title, i))} height={tall ? 76 : 64} />;
     const chips = cats.length > 0 && (
       <div className={styles.chips}>
         {cats.map((c) => <span key={c.id} className={styles.chip}><span className={styles.swatch} style={{ background: c.color }} aria-hidden="true" />{c.name}</span>)}
@@ -78,14 +82,31 @@ function Board({ now }: { now: Date }) {
     );
 
     if (g.kind === "project") {
+      if (col === "scheduled") {
+        return (
+          <li key={owner.id} className={styles.card} data-marquee-host>
+            <MarqueeText className={styles.cardTitle}>{owner.title}</MarqueeText>
+            <div className={styles.muted}>Project</div>
+            {stack}
+          </li>
+        );
+      }
       const worked = d.sessions.filter((s) => s.ownerId === owner.id).reduce((n, s) => n + s.completedMinutes, 0);
       const open = d.tasks.filter((t) => t.projectId === owner.id && (t.status === "not-started" || t.status === "in-progress")).length;
+      const goal = g.project.weeklyTargetMinutes;
+      const week = goal ? minutesThisWeek(owner.id, d.sessions, d.completions, today, WEEK_START) : 0;
       return (
         <li key={owner.id} className={styles.card} data-marquee-host>
           <MarqueeText className={styles.cardTitle}>{owner.title}</MarqueeText>
           <div className={styles.muted}>{g.project.status === "paused" ? "Paused · " : ""}{plural(open, "open task")} · {worked} min worked</div>
+          {goal ? (
+            <div>
+              <progress className={styles.weekly} value={Math.min(week, goal)} max={goal} aria-label={`Weekly target for ${owner.title}`} aria-valuetext={`${formatDuration(week)} of ${formatDuration(goal)} this week`} />
+              <div className={styles.muted}>{formatDuration(week)} of {formatDuration(goal)} this week</div>
+            </div>
+          ) : null}
           {chips}
-          {g.sessions.length > 0 ? stack : <p className={styles.muted}>No sessions yet. Use New session to plan some.</p>}
+          {stack || <p className={styles.muted}>{g.project.status === "paused" ? "Paused. Resume it to get sessions." : "Getting sessions ready…"}</p>}
         </li>
       );
     }
@@ -124,10 +145,7 @@ function Board({ now }: { now: Date }) {
       <h1 className={styles.pageTitle}>Timebox</h1>
       <div className={styles.split}>
         <section aria-labelledby="backlog-h" className={styles.backlog}>
-          <div className={styles.toolbar}>
-            <h2 id="backlog-h">Session backlog</h2>
-            <button onClick={() => setAddingSession(true)}>New session</button>
-          </div>
+          <h2 id="backlog-h">Session backlog</h2>
           <div className={styles.board}>
             {COLUMNS.map((col) => {
               const list = groups[col.id];
@@ -137,9 +155,10 @@ function Board({ now }: { now: Date }) {
                 <section key={col.id} className={styles.column} aria-labelledby={`scol-${col.id}`}>
                   <div className={styles.colHead}>
                     <h3 id={`scol-${col.id}`} className={styles.colTitle}>{col.title} <span className={styles.count}>({plural(count, isProjects ? "project" : "session")})</span></h3>
+                    {col.id === "unscheduled" && <button onClick={() => setAddingSession(true)}>New session</button>}
                     {isProjects && <button onClick={() => setAddingProject(true)}>New project</button>}
                   </div>
-                  {list.length === 0 ? <p className={styles.muted}>Nothing here.</p> : <ul className={styles.cards2}>{list.map(card)}</ul>}
+                  {list.length === 0 ? <p className={styles.muted}>Nothing here.</p> : <ul className={styles.cards2}>{list.map(card(col.id))}</ul>}
                 </section>
               );
             })}
@@ -159,7 +178,7 @@ function Board({ now }: { now: Date }) {
       </div>
 
       <ScheduleDialog target={target} entries={d.timebox} events={d.events} today={today} onClose={() => setTarget(null)} onSchedule={d.scheduleSession} />
-      <NewSessionDialog open={addingSession} onClose={() => setAddingSession(false)} tasks={openTasks} projects={liveProjects} onCreate={d.createSession} />
+      <NewSessionDialog open={addingSession} onClose={() => setAddingSession(false)} tasks={openTasks} onCreate={d.createSession} />
       <NewProjectDialog open={addingProject} onClose={() => setAddingProject(false)} onCreate={(input) => d.addProject(buildProject(input, new Date()))} />
     </>
   );

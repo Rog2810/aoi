@@ -10,7 +10,8 @@ export type BoardGroups = Record<SessionColumn, SessionGroup[]>;
 const push = (m: Map<string, Session[]>, key: string, s: Session) => m.set(key, [...(m.get(key) ?? []), s]);
 
 /**
- * Open task sessions are split by whether they have a timebox slot; every open project session goes to Projects.
+ * Open task sessions are split by whether they have a timebox slot. A project's waiting sessions (no slot) go to
+ * Projects, which always lists every active project; its placed sessions go to Scheduled under the project name.
  * Completed sessions are not on the board (the timebox shows them). One group per task or project per column.
  */
 export function groupSessions(tasks: Task[], projects: Project[], sessions: Session[], entries: TimeboxEntry[]): BoardGroups {
@@ -19,26 +20,34 @@ export function groupSessions(tasks: Task[], projects: Project[], sessions: Sess
   const order = (a: Session, b: Session) => slotKey(a.id).localeCompare(slotKey(b.id)) || a.sequence - b.sequence; // placed ones first, by time
 
   const byTask = { unscheduled: new Map<string, Session[]>(), scheduled: new Map<string, Session[]>() };
-  const byProject = new Map<string, Session[]>();
+  const waiting = new Map<string, Session[]>();
+  const placed = new Map<string, Session[]>();
   for (const s of sessions) {
     if (s.status === "completed") continue;
+    const hasSlot = slotKey(s.id) !== "~";
     if (s.ownerType === "project") {
-      push(byProject, s.ownerId, s);
+      const p = projects.find((x) => x.id === s.ownerId);
+      if (p && p.status !== "archived") push(hasSlot ? placed : waiting, p.id, s);
       continue;
     }
     const t = tasks.find((x) => x.id === s.ownerId);
     if (!t || t.status === "cancelled" || t.status === "completed") continue;
-    push(byTask[slotKey(s.id) === "~" ? "unscheduled" : "scheduled"], t.id, s);
+    push(byTask[hasSlot ? "scheduled" : "unscheduled"], t.id, s);
   }
 
   const taskGroups = (m: Map<string, Session[]>): SessionGroup[] =>
     tasks.filter((t) => m.has(t.id)).sort(sortByDue).map((t) => ({ kind: "task", task: t, sessions: [...(m.get(t.id) ?? [])].sort(order) }));
-  const projectGroups: SessionGroup[] = projects
-    .filter((p) => p.status !== "archived")
-    .sort((a, b) => a.title.localeCompare(b.title))
-    .map((p) => ({ kind: "project", project: p, sessions: [...(byProject.get(p.id) ?? [])].sort(order) }));
+  const projectGroups = (m: Map<string, Session[]>, keepEmpty: boolean): SessionGroup[] =>
+    projects
+      .filter((p) => p.status !== "archived" && (keepEmpty || m.has(p.id)))
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map((p) => ({ kind: "project", project: p, sessions: [...(m.get(p.id) ?? [])].sort(order) }));
 
-  return { unscheduled: taskGroups(byTask.unscheduled), scheduled: taskGroups(byTask.scheduled), projects: projectGroups };
+  return {
+    unscheduled: taskGroups(byTask.unscheduled),
+    scheduled: [...taskGroups(byTask.scheduled), ...projectGroups(placed, false)],
+    projects: projectGroups(waiting, true),
+  };
 }
 
 /** One segment per session of a task, in order, for the progress strip. */

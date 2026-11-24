@@ -34,8 +34,7 @@ export function sampleData(today: Date) {
     session("t6", 1, 1, { status: "scheduled" }), // 1-minute test session
     session("t6", 2, 1), // 1-minute test session that is NOT on the timebox
     session("t8", 1, 60),
-    session("p1", 1, 45, { ownerType: "project", status: "scheduled" }),
-    session("p1", 2, 45, { ownerType: "project" }),
+    session("p1", 1, 60, { ownerType: "project", status: "scheduled" }),
   ];
   const event = (id: string, title: string, date: string, startMinute: number, endMinute: number, recurrence: CalendarEvent["recurrence"], overlapPolicy: CalendarEvent["overlapPolicy"]): CalendarEvent =>
     ({ id, title, date, startMinute, endMinute, recurrence, overlapPolicy, ...base });
@@ -52,10 +51,10 @@ export function sampleData(today: Date) {
     entry("b1", d0, "t1:s2", "11:00", "11:45"),
     entry("b2", d0, "t1:s3", "17:00", "17:45"),
     entry("b3", addDays(d0, 1), "t1:s4", "11:00", "11:45"),
-    entry("b4", addDays(d0, 1), "p1:s1", "14:00", "14:45"),
+    entry("b4", addDays(d0, 1), "p1:s1", "14:00", "15:00"),
   ];
   const rem = (id: string, title: string, daysAgo: number): Reminder => ({ id, title, lastCompletedDate: addDays(d0, -daysAgo), ...base });
   const reminders = [rem("r1", "Laundry", 6), rem("r2", "General cleaning", 12), rem("r3", "Call family", 3)];
-  const projects: Project[] = [{ id: "p1", title: "Aoi app", categoryIds: ["personal"], tagIds: [], status: "active", ...base }];
+  const projects: Project[] = [{ id: "p1", title: "Aoi app", categoryIds: ["personal"], tagIds: [], status: "active", weeklyTargetMinutes: 240, ...base }];
   return { tasks, sessions, events, timebox, reminders, projects };
 }

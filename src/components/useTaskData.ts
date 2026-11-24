@@ -1,11 +1,12 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getRepositories } from "@/db/db";
 import type { Project, Session, Task, TaskStatus, TimeboxEntry } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import { toDateKey } from "@/lib/dates";
 import { newSession } from "@/lib/sessions";
 import { allSubtasksDone, taskCompletion, withMoreEstimate, withStatus } from "@/lib/tasks";
+import { projectSessionsToCreate } from "@/lib/projects";
 import { usePersistentRecords, type StorageStatus } from "./usePersistentRecords";
 
 /** Loads tasks, projects, sessions, timebox entries and completion records, and changes them the same way everywhere. */
@@ -21,6 +22,13 @@ export function useTaskData(now: Date) {
 
   const states = [t.status, p.status, s.status, c.status, tb.status];
   const status: StorageStatus = states.includes("loading") ? "loading" : states.includes("error") ? "error" : "ready";
+
+  // Projects have no fixed session list: every active project keeps two waiting sessions. When one is scheduled,
+  // the next run adds a new one at the bottom. Ids are deterministic, so a repeated run is harmless.
+  useEffect(() => {
+    if (status !== "ready") return;
+    projectSessionsToCreate(p.items, s.items, tb.items, new Date()).forEach((x) => void s.save(x));
+  }, [status, p.items, s.items, tb.items, s.save]);
 
   const setStatus = (task: Task, next: TaskStatus) => {
     const at = new Date();
@@ -47,11 +55,11 @@ export function useTaskData(now: Date) {
   };
   const addProject = (project: Project) => void p.save(project);
 
-  /** Creates an on-demand session. For a task, its estimate grows by the session length so the plan stays honest. */
-  const createSession = (ownerType: Session["ownerType"], ownerId: string, minutes: number) => {
+  /** Creates an on-demand session for a task; the task's estimate grows by the session length so the plan stays honest. */
+  const createSession = (taskId: string, minutes: number) => {
     const at = new Date();
-    void s.save(newSession(ownerType, ownerId, s.items, minutes, at));
-    const task = ownerType === "task" ? t.items.find((x) => x.id === ownerId) : undefined;
+    void s.save(newSession("task", taskId, s.items, minutes, at));
+    const task = t.items.find((x) => x.id === taskId);
     if (task) void t.save(withMoreEstimate(task, minutes, at));
   };
 
@@ -60,6 +68,13 @@ export function useTaskData(now: Date) {
     void tb.save(entry);
     if (session.status === "unscheduled") void s.save({ ...session, status: "scheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
+
+  /** Removes a session's slot. A session that was only scheduled goes back to unscheduled; a started one keeps its progress. */
+  const unscheduleSession = (session: Session) => {
+    tb.items.filter((e) => e.sourceType === "session" && e.sourceId === session.id).forEach((e) => void tb.remove(e.id));
+    if (session.status === "scheduled") void s.save({ ...session, status: "unscheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
+  };
+
   /** Undo for a session completed today: removes today's completion record and reopens the session. The timebox will call this. */
   const undoSession = (session: Session) => {
     const at = new Date();
@@ -83,6 +98,7 @@ export function useTaskData(now: Date) {
     createSession,
     saveSession: s.save,
     scheduleSession,
+    unscheduleSession,
     undoSession,
     parentPrompt,
     answerParent,
