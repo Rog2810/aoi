@@ -22,7 +22,7 @@ export default function TaskBoard() {
 }
 
 function Board({ now }: { now: Date }) {
-  const d = useTaskData(now);
+  const d = useTaskData();
   const [adding, setAdding] = useState(false);
   if (d.status === "loading") return <p role="status">Loading…</p>;
 

@@ -31,7 +31,7 @@ export default function SessionBoard() {
 }
 
 function Board({ now }: { now: Date }) {
-  const d = useTaskData(now);
+  const d = useTaskData();
   const [target, setTarget] = useState<{ session: Session; title: string } | null>(null);
   const [addingSession, setAddingSession] = useState(false);
   const [addingProject, setAddingProject] = useState(false);

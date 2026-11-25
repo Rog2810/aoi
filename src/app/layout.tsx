@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { AppDataProvider } from "@/components/AppDataProvider";
 import PwaRegister from "@/components/PwaRegister";
+import SessionBar from "@/components/SessionBar";
+import { SessionTimerProvider } from "@/components/SessionTimerProvider";
 import { APP_NAME } from "@/config/app";
 import "./globals.css";
 
@@ -11,7 +14,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <a className="skip" href="#main">Skip to content</a>
-        {children}
+        <AppDataProvider>
+          <SessionTimerProvider>
+            <SessionBar />
+            {children}
+          </SessionTimerProvider>
+        </AppDataProvider>
         <PwaRegister />
       </body>
     </html>

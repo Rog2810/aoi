@@ -1,28 +1,16 @@
 "use client";
-import { useMemo, useState } from "react";
-import { getRepositories } from "@/db/db";
+import { useState } from "react";
 import type { Project, Session, Task, TaskStatus, TimeboxEntry } from "@/domain/types";
-import { sampleData } from "@/fixtures/sample";
 import { toDateKey } from "@/lib/dates";
 import { newSession } from "@/lib/sessions";
 import { allSubtasksDone, taskCompletion, withMoreEstimate, withStatus } from "@/lib/tasks";
-import { useSessionLifecycle } from "./useSessionLifecycle";
-import { usePersistentRecords, type StorageStatus } from "./usePersistentRecords";
+import { useAppData } from "./AppDataProvider";
 
-/** Loads tasks, projects, sessions, timebox entries and completion records, and changes them the same way everywhere. */
-export function useTaskData(now: Date) {
-  const repos = getRepositories();
-  const seed = useMemo(() => sampleData(now), [now]);
-  const t = usePersistentRecords(repos.tasks, () => seed.tasks);
-  const p = usePersistentRecords(repos.projects, () => seed.projects);
-  const s = usePersistentRecords(repos.sessions, () => seed.sessions);
-  const c = usePersistentRecords(repos.completions, () => []);
-  const tb = usePersistentRecords(repos.timebox, () => seed.timebox);
+/** Page-level actions on the shared data: changing task status, adding things, scheduling sessions. */
+export function useTaskData() {
+  const app = useAppData();
+  const { tasks: t, projects: p, sessions: s, completions: c, timebox: tb } = app;
   const [parentPrompt, setParentPrompt] = useState<Task | null>(null);
-
-  const states = [t.status, p.status, s.status, c.status, tb.status];
-  const status: StorageStatus = states.includes("loading") ? "loading" : states.includes("error") ? "error" : "ready";
-  useSessionLifecycle({ ready: status === "ready", sessions: s.items, timebox: tb.items, saveSession: s.save, saveCompletion: c.save });
 
   const setStatus = (task: Task, next: TaskStatus) => {
     const at = new Date();
@@ -62,14 +50,12 @@ export function useTaskData(now: Date) {
     void tb.save(entry);
     if (session.status === "unscheduled") void s.save({ ...session, status: "scheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
-
   /** Removes a session's slot. A project session exists only while scheduled, so it is deleted; a task session goes back to waiting. */
   const unscheduleSession = (session: Session) => {
     tb.items.filter((e) => e.sourceType === "session" && e.sourceId === session.id).forEach((e) => void tb.remove(e.id));
     if (session.ownerType === "project") void s.remove(session.id);
     else if (session.status === "scheduled") void s.save({ ...session, status: "unscheduled", updatedAt: new Date().toISOString(), revision: session.revision + 1 });
   };
-
   /** Undo for a session completed today: removes today's completion record and reopens the session. The timebox will call this. */
   const undoSession = (session: Session) => {
     const at = new Date();
@@ -80,13 +66,13 @@ export function useTaskData(now: Date) {
   };
 
   return {
-    status,
+    status: app.status,
     tasks: t.items,
     projects: p.items,
     sessions: s.items,
     completions: c.items,
     timebox: tb.items,
-    events: seed.events, // sample data until the Events page persists them
+    events: app.events,
     setStatus,
     addTask,
     addProject,
