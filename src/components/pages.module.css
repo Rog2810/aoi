@@ -1,4 +1,4 @@
-.page { box-sizing: border-box; max-width: 90rem; margin: 0 auto; padding: clamp(0.75rem, 0.25rem + 2.2vw, 3rem); display: grid; gap: var(--space); }
+.page { box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: clamp(0.75rem, 0.25rem + 2.2vw, 3rem); display: grid; gap: var(--space); }
 .bar { display: flex; align-items: center; gap: var(--space); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space); }
 .brand { font-size: 1.1em; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space); flex-wrap: wrap; }
@@ -50,26 +50,28 @@
 .segDone { background: var(--text); }
 .segHalf { background: linear-gradient(90deg, var(--text) 50%, var(--bg) 50%); }
 
-/* stacked session cards: next session on top, the rest peek out and spread when clicked */
-.stack { --peek: 10px; --gap: 8px; --dur: 220ms; display: grid; gap: 6px; position: relative; margin-top: 2px; }
-.tg { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
-.cards { position: relative; height: calc(var(--h) + var(--k) * var(--peek)); transition: height var(--dur) ease; }
-.tg:checked ~ .cards { height: calc(var(--n) * var(--h) + (var(--n) - 1) * var(--gap)); }
-.sc { position: absolute; left: 0; right: 0; top: 0; height: var(--h); box-sizing: border-box; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.14); transform-origin: 50% 0; transform: translateY(calc(var(--p) * var(--peek))) scale(calc(1 - var(--p) * 0.04)); z-index: calc(10 - var(--i)); transition: transform var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 25ms); }
-.tg:checked ~ .cards .sc { transform: translateY(calc(var(--i) * (var(--h) + var(--gap)))); }
+/* stacked session cards: next session on top, the rest peek out; click the top card to spread them */
+.stack { --peek: 10px; --gap: 8px; --dur: 220ms; position: relative; margin-top: 2px; }
+/* isolation keeps the cards' z-indexes inside the stack, so they can never draw over the session bar */
+.cards { position: relative; isolation: isolate; height: calc(var(--h) + var(--k) * var(--peek)); transition: height var(--dur) ease; }
+.open .cards { height: calc(var(--n) * var(--h) + (var(--n) - 1) * var(--gap)); }
+.sc { position: absolute; left: 0; right: 0; top: 0; height: var(--h); box-sizing: border-box; overflow: hidden; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.14); transform-origin: 50% 0; transform: translateY(calc(var(--p) * var(--peek))) scale(calc(1 - var(--p) * 0.04)); z-index: calc(10 - var(--i)); transition: transform var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i) * 25ms); }
+.open .sc { transform: translateY(calc(var(--i) * (var(--h) + var(--gap)))); }
 .inner { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 10px; box-sizing: border-box; visibility: visible; transition: visibility 0s; }
-.tg:not(:checked) ~ .cards .sc:not(.top) .inner { visibility: hidden; transition: visibility 0s linear var(--dur); }
+.stack:not(.open) .sc:not(.top) .inner { visibility: hidden; transition: visibility 0s linear var(--dur); }
 .grip { flex: none; width: 10px; height: 15px; background-image: radial-gradient(var(--muted) 1.5px, transparent 1.7px); background-size: 5px 5px; } /* cursor: grab once dragging exists */
-.tx { flex: 1; min-width: 0; font-size: 0.9em; overflow-wrap: anywhere; }
+.tx { flex: 1; min-width: 0; font-size: 0.9em; }
+.txBtn { flex: 1; min-width: 0; font: inherit; font-size: 0.9em; color: inherit; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 0; min-height: 0; cursor: pointer; }
+.txBtn:hover { background: transparent; }
+.ln { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .peek { position: absolute; left: 0; right: 0; top: var(--h); height: calc(var(--k) * var(--peek)); z-index: 20; cursor: pointer; }
-.tg:checked ~ .cards .peek { display: none; }
-.cap { justify-self: start; display: inline-flex; align-items: center; min-height: 32px; padding: 0 6px; border-radius: 8px; font-size: 0.9em; cursor: pointer; }
-.tg:focus-visible ~ .cap { outline: 3px solid var(--focus); outline-offset: 2px; }
-.chev { display: inline-block; width: 7px; height: 7px; margin: -3px 0 0 8px; border-right: 2px solid var(--text); border-bottom: 2px solid var(--text); transform: rotate(45deg); transition: transform var(--dur); }
-.tg:checked ~ .cap .chev { transform: rotate(-135deg); margin-top: 3px; }
-@media (prefers-reduced-motion: reduce) { .cards, .sc, .inner, .chev { transition: none !important; } }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .cards, .sc, .inner { transition: none !important; } }
 
 .colHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
 .colHead .colTitle { margin: 0; }
 
 .weekly { width: 100%; height: 10px; accent-color: var(--primary); }
+
+.card { overflow-wrap: anywhere; }
+.iconBtn { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; min-height: 0; padding: 0; }

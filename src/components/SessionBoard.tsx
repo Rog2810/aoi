@@ -16,6 +16,8 @@ import TimeProgress from "./TimeProgress";
 import { useNow } from "./useNow";
 import { useTaskData } from "./useTaskData";
 import styles from "./pages.module.css";
+import IconButton from "./IconButton";
+import { CalendarIcon, ReturnIcon } from "./icons";
 
 const COLUMNS: { id: SessionColumn; title: string }[] = [
   { id: "unscheduled", title: "Unscheduled" },
@@ -48,29 +50,31 @@ function Board({ now }: { now: Date }) {
   const slotLabel = (date: string, start: number, end: number) => {
     const [y, m, day] = date.split("-").map(Number);
     const name = date === today ? "Today" : date === addDays(today, 1) ? "Tomorrow" : new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date(y, m - 1, day));
-    return `${name} ${formatMinute(start)} to ${formatMinute(end)}`;
+    return `${name} ${formatMinute(start)}–${formatMinute(end)}`;
   };
 
-  /** One session card: Unschedule when placed (not while it is being worked), otherwise a Schedule button (the keyboard alternative to dragging). */
+  /** One session card. Each text line stays on one line because the card has a fixed height; the full text is in the tooltip. */
   const itemFor = (s: Session, title: string, i: number): StackItem => {
     const slot = firstSlot(s.id);
     const label = `${title}, session ${numOf(s)}`;
+    const head = `${s.plannedMinutes} min${slot ? " planned" : ""}`;
+    const progress = s.completedMinutes > 0 ? `${s.completedMinutes} done · ${remainingMinutes(s)} left` : null;
+    const when = slot ? slotLabel(slot.date, slot.startMinute, slot.endMinute) : `${i === 0 ? "Next · " : ""}Not scheduled`;
     return {
       id: s.id,
       grip: true,
-      body: (
+      tip: [`Session ${numOf(s)} · ${head}`, progress, when].filter(Boolean).join("\n"),
+      text: (
         <>
-          <div className={styles.tx}>
-            <div><strong>Session {numOf(s)}</strong> · {s.plannedMinutes} min{slot ? " planned" : ""}</div>
-            {s.completedMinutes > 0 && <div className={styles.muted}>{s.completedMinutes} done · {remainingMinutes(s)} left</div>}
-            <div className={styles.muted}>{slot ? slotLabel(slot.date, slot.startMinute, slot.endMinute) : `${i === 0 ? "Next · " : ""}Not scheduled`}</div>
-          </div>
-          {slot ? (
-            s.status !== "in-progress" && <button onClick={() => d.unscheduleSession(s)} aria-label={`Unschedule ${label}`}>Unschedule</button>
-          ) : (
-            <button onClick={() => setTarget({ session: s, title: label })} aria-label={`Schedule ${label}`}>Schedule</button>
-          )}
+          <span className={styles.ln}><strong>Session {numOf(s)}</strong> · {head}</span>
+          {progress && <span className={`${styles.ln} ${styles.muted}`}>{progress}</span>}
+          <span className={`${styles.ln} ${styles.muted}`}>{when}</span>
         </>
+      ),
+      action: slot ? (
+        s.status !== "in-progress" ? <IconButton label={`Unschedule ${label}`} onClick={() => d.unscheduleSession(s)}><ReturnIcon /></IconButton> : null
+      ) : (
+        <IconButton label={`Schedule ${label}`} onClick={() => setTarget({ session: s, title: label })}><CalendarIcon /></IconButton>
       ),
     };
   };
@@ -82,14 +86,17 @@ function Board({ now }: { now: Date }) {
     return {
       id: `next-${p.id}`,
       grip: true,
-      body: (
+      tip: `Session ${n} · ${PROJECT_SESSION_MINUTES} min\nNext · Not scheduled`,
+      text: (
         <>
-          <div className={styles.tx}>
-            <div><strong>Session {n}</strong> · {PROJECT_SESSION_MINUTES} min</div>
-            <div className={styles.muted}>Next · Not scheduled</div>
-          </div>
-          <button onClick={() => setTarget({ session: newSession("project", p.id, d.sessions, PROJECT_SESSION_MINUTES, new Date()), title: label })} aria-label={`Schedule ${label}`}>Schedule</button>
+          <span className={styles.ln}><strong>Session {n}</strong> · {PROJECT_SESSION_MINUTES} min</span>
+          <span className={`${styles.ln} ${styles.muted}`}>Next · Not scheduled</span>
         </>
+      ),
+      action: (
+        <IconButton label={`Schedule ${label}`} onClick={() => setTarget({ session: newSession("project", p.id, d.sessions, PROJECT_SESSION_MINUTES, new Date()), title: label })}>
+          <CalendarIcon />
+        </IconButton>
       ),
     };
   };
