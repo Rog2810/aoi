@@ -80,7 +80,9 @@ export default function CalendarWidget({ now, tasks, weekStart = 1, activeTaskId
         {weeks.map((week) => (
           <div key={week[0].key} role="row" className={styles.week}>
             {week.map((c) => {
-              const on = spans.filter((s) => s.start <= c.key && c.key <= s.end);
+              const on = spans
+                .filter((s) => s.start <= c.key && c.key <= s.end)
+                .sort((a, b) => a.end.localeCompare(b.end));
               const due = on.filter((s) => s.end === c.key);
               const level = loadLevel(on.reduce((sum, s) => sum + s.perDay, 0));
               const lit = active ? on.find((s) => s.id === active) : undefined;
