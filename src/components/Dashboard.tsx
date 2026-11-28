@@ -14,6 +14,7 @@ import SessionManagerWidget from "./SessionManagerWidget";
 import TasksEventsWidget from "./TasksEventsWidget";
 import TimeboxWidget from "./TimeboxWidget";
 import styles from "./Dashboard.module.css";
+import ReleasedNote from "./ReleasedNote";
 
 /** Date/locale are read after mount so server and browser output cannot disagree (hydration). */
 export default function Dashboard() {
@@ -56,6 +57,7 @@ function Board({ now }: { now: Date }) {
           Changes could not be saved on this device. Aoi is running from memory, so anything you change will be lost when you close this tab.
         </p>
       )}
+      <ReleasedNote />
       <div className={styles.home}>
         <div className={styles.aMenu}>
           <div className={styles.bar}>

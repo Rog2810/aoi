@@ -47,8 +47,21 @@ describe("groupSessions", () => {
 });
 
 describe("segmentsFor", () => {
-  it("shows done, half and empty segments in order", () => {
-    const s = [session("a", "t1", 1, { status: "completed" }), session("b", "t1", 2, { status: "in-progress" }), session("c", "t1", 3)];
-    expect(segmentsFor(s, "t1")).toEqual(["done", "half", "empty"]);
+  const TODAY = "2026-11-26";
+  it("orders done and started first, then upcoming, then missed, then waiting", () => {
+    const sessions = [
+      session("w", "t1", 5),
+      session("m", "t1", 2, { status: "scheduled" }),
+      session("u", "t1", 3, { status: "scheduled" }),
+      session("d", "t1", 1, { status: "completed" }),
+      session("h", "t1", 4, { status: "in-progress" }),
+    ];
+    const entries = [slot("m", "2026-11-25", 540), slot("u", "2026-11-27", 540), slot("d", "2026-11-24", 540), slot("h", "2026-11-26", 540)];
+    expect(segmentsFor(sessions, "t1", entries, TODAY)).toEqual(["done", "half", "upcoming", "missed", "waiting"]);
+  });
+  it("no longer leaves a hole between done sessions when a middle one was missed", () => {
+    const sessions = [session("a", "t1", 1, { status: "completed" }), session("b", "t1", 2), session("c", "t1", 3, { status: "completed" })];
+    const entries = [slot("a", "2026-11-24", 540), slot("c", "2026-11-25", 540)];
+    expect(segmentsFor(sessions, "t1", entries, TODAY)).toEqual(["done", "done", "waiting"]);
   });
 });

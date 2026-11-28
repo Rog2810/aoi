@@ -49,7 +49,7 @@ function Board({ now }: { now: Date }) {
 
   const slotLabel = (date: string, start: number, end: number) => {
     const [y, m, day] = date.split("-").map(Number);
-    const name = date === today ? "Today" : date === addDays(today, 1) ? "Tomorrow" : new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date(y, m - 1, day));
+    const name = date === today ? "Today" : date === addDays(today, 1) ? "Tomorrow" : date === addDays(today, -1) ? "Yesterday" : new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date(y, m - 1, day));
     return `${name} ${formatMinute(start)}–${formatMinute(end)}`;
   };
 
@@ -59,7 +59,8 @@ function Board({ now }: { now: Date }) {
     const label = `${title}, session ${numOf(s)}`;
     const head = `${s.plannedMinutes} min${slot ? " planned" : ""}`;
     const progress = s.completedMinutes > 0 ? `${s.completedMinutes} done · ${remainingMinutes(s)} left` : null;
-    const when = slot ? slotLabel(slot.date, slot.startMinute, slot.endMinute) : `${i === 0 ? "Next · " : ""}Not scheduled`;
+    const missed = Boolean(slot) && s.status === "scheduled" && (slot?.date ?? today) < today;
+    const when = slot ? `${missed ? "Missed · " : ""}${slotLabel(slot.date, slot.startMinute, slot.endMinute)}` : `${i === 0 ? "Next · " : ""}Not scheduled`;
     return {
       id: s.id,
       grip: true,
@@ -141,10 +142,10 @@ function Board({ now }: { now: Date }) {
         </li>
       );
     }
-
-    const segs = segmentsFor(d.sessions, owner.id);
+    const segs = segmentsFor(d.sessions, owner.id, d.timebox, today);
     const finished = segs.filter((x) => x === "done").length;
     const started = segs.filter((x) => x === "half").length;
+    const missedCount = segs.filter((x) => x === "missed").length;
     const parent = d.tasks.find((p) => p.id === g.task.parentId);
     const project = d.projects.find((p) => p.id === g.task.projectId);
     return (
@@ -156,8 +157,8 @@ function Board({ now }: { now: Date }) {
         <div><strong>{describeRemaining(daysRemaining(g.task.dueDate, now))}</strong></div>
         {chips}
         <div className={styles.strip}>
-          <span className={styles.segs} role="img" aria-label={`${finished} of ${segs.length} sessions done${started ? `, ${started} in progress` : ""}`}>
-            {segs.map((x, i) => <span key={i} className={x === "done" ? `${styles.seg} ${styles.segDone}` : x === "half" ? `${styles.seg} ${styles.segHalf}` : styles.seg} />)}
+          <span className={styles.segs} role="img" aria-label={`${finished} of ${segs.length} sessions done${started ? `, ${started} in progress` : ""}${missedCount ? `, ${missedCount} missed` : ""}`}>
+            {segs.map((x, i) => <span key={i} className={x === "done" ? `${styles.seg} ${styles.segDone}` : x === "half" ? `${styles.seg} ${styles.segHalf}` : x === "missed" ? `${styles.seg} ${styles.segMissed}` : styles.seg} />)}
           </span>
           <span className={styles.muted}>{finished} of {segs.length} sessions done</span>
         </div>

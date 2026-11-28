@@ -1,4 +1,5 @@
-import type { Session } from "../domain/types";
+import type { Session, TimeboxEntry } from "../domain/types";
+import { dayEndsAt } from "./missed";
 
 export const QUEUE_KEY = "aoi.sessionQueue.v1";
 
@@ -35,4 +36,20 @@ export function readQueueState(raw: string | null, today: string): StoredQueue {
   } catch {
     return none;
   }
+}
+
+/**
+ * Which timebox entries belong in today's queue: today's, any started session's (whatever its date, so work that
+ * crosses midnight keeps going), and earlier days' until their day has ended. Sorted by date, then start time.
+ */
+export function queueEntries(entries: TimeboxEntry[], sessions: Session[], today: string, now: Date): TimeboxEntry[] {
+  return entries
+    .filter((e) => {
+      if (e.sourceType !== "session") return false;
+      if (e.date === today) return true;
+      if (e.date > today) return false;
+      const s = sessions.find((x) => x.id === e.sourceId);
+      return s?.status === "in-progress" || now.getTime() < dayEndsAt(e.date).getTime();
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.startMinute - b.startMinute);
 }

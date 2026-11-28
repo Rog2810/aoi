@@ -1,3 +1,4 @@
 .bar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px var(--space); background: var(--surface); border-bottom: 1px solid var(--border); }
 .text { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
 .bar a { color: var(--text); }
+.note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px var(--space); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }

@@ -49,10 +49,25 @@ export function groupSessions(tasks: Task[], projects: Project[], sessions: Sess
   };
 }
 
-/** One segment per session of a task, in order, for the progress strip. */
-export function segmentsFor(sessions: Session[], ownerId: string): ("done" | "half" | "empty")[] {
+export type Segment = "done" | "half" | "upcoming" | "missed" | "waiting";
+
+/**
+ * One segment per session of an owner, for the progress strip. Order: done and started (by time), upcoming, missed,
+ * then waiting, so the empty segments sit together on the right. "Missed" is a scheduled session that never started
+ * and whose day has passed; it stays visible (dashed) until the sweep releases it.
+ */
+export function segmentsFor(sessions: Session[], ownerId: string, entries: TimeboxEntry[], today: string): Segment[] {
+  const slot = (id: string) =>
+    entries.filter((e) => e.sourceType === "session" && e.sourceId === id).map((e) => `${e.date} ${String(e.startMinute).padStart(4, "0")}`).sort()[0];
+  const rank: Record<Segment, number> = { done: 0, half: 0, upcoming: 1, missed: 2, waiting: 3 };
   return sessions
     .filter((s) => s.ownerId === ownerId)
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((s) => (s.status === "completed" ? "done" : s.status === "in-progress" || s.completedMinutes > 0 ? "half" : "empty"));
+    .map((s) => {
+      const when = slot(s.id);
+      const kind: Segment =
+        s.status === "completed" ? "done" : s.status === "in-progress" || s.completedMinutes > 0 ? "half" : when === undefined ? "waiting" : when.slice(0, 10) < today ? "missed" : "upcoming";
+      return { kind, key: when ?? "~", seq: s.sequence };
+    })
+    .sort((a, b) => rank[a.kind] - rank[b.kind] || a.key.localeCompare(b.key) || a.seq - b.seq)
+    .map((x) => x.kind);
 }

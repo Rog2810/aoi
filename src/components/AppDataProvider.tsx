@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getRepositories } from "@/db/db";
-import type { CalendarEvent, CompletionRecord, Project, Reminder, Session, Task, TimeboxEntry } from "@/domain/types";
+import type { CalendarEvent, CompletionRecord, MissedSession, Project, Reminder, Session, Task, TimeboxEntry } from "@/domain/types";
 import { sampleData } from "@/fixtures/sample";
 import { usePersistentRecords, type StorageStatus } from "./usePersistentRecords";
 
@@ -19,11 +19,12 @@ export interface AppData {
   completions: Store<CompletionRecord>;
   timebox: Store<TimeboxEntry>;
   reminders: Store<Reminder>;
+  missed: Store<MissedSession>;
   events: CalendarEvent[]; // sample data until the Events page persists them
 }
 
 const empty = <T,>(): Store<T> => ({ items: [], status: "loading", save: async () => undefined, remove: async () => undefined });
-const LOADING: AppData = { status: "loading", tasks: empty(), projects: empty(), sessions: empty(), completions: empty(), timebox: empty(), reminders: empty(), events: [] };
+const LOADING: AppData = { status: "loading", tasks: empty(), projects: empty(), sessions: empty(), completions: empty(), timebox: empty(), reminders: empty(), missed: empty(), events: [] };
 const Ctx = createContext<AppData | null>(null);
 
 /** Everything a page needs lives here, so pages share one copy and background work (the session timer) cannot go stale. */
@@ -36,9 +37,10 @@ function Loaded({ children }: { children: ReactNode }) {
   const completions = usePersistentRecords(repos.completions, () => []);
   const timebox = usePersistentRecords(repos.timebox, () => seed.timebox);
   const reminders = usePersistentRecords(repos.reminders, () => seed.reminders);
-  const states = [tasks.status, projects.status, sessions.status, completions.status, timebox.status, reminders.status];
+  const missed = usePersistentRecords(repos.missed, () => []);
+  const states = [tasks.status, projects.status, sessions.status, completions.status, timebox.status, reminders.status, missed.status];
   const status: StorageStatus = states.includes("loading") ? "loading" : states.includes("error") ? "error" : "ready";
-  return <Ctx.Provider value={{ status, tasks, projects, sessions, completions, timebox, reminders, events: seed.events }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ status, tasks, projects, sessions, completions, timebox, reminders, missed, events: seed.events }}>{children}</Ctx.Provider>;
 }
 
 /** The database is only touched in the browser, so the first (server-rendered) pass shows the loading state. */

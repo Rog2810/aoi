@@ -6,10 +6,10 @@ import { sessionNumbers } from "@/lib/sessionNumbers";
 import { idleMinutes, PAUSE_NUDGE_MINUTES, sessionCompletion } from "@/lib/sessions";
 import { withMoreEstimate } from "@/lib/tasks";
 import { flaggedTitle, type TitleFlag } from "@/lib/title";
-import { orderQueue, QUEUE_KEY, readQueueState } from "@/lib/queue";
+import { orderQueue, QUEUE_KEY, queueEntries, readQueueState } from "@/lib/queue";
 import { useAppData } from "./AppDataProvider";
 import { useNow } from "./useNow";
-import { useSessionLifecycle } from "./useSessionLifecycle";
+import { useSessionLifecycle, type Released } from "./useSessionLifecycle";
 
 export const EXTEND_MINUTES = 15;
 
@@ -37,6 +37,9 @@ export interface SessionTimer {
   keepWorking: () => void;
   goNextOfTask: () => void;
   skipSession: () => void;
+  today: string;
+  released: Released; // sessions released at the end of their day since Aoi opened
+  dismissReleased: () => void;
 }
 
 const Ctx = createContext<SessionTimer | null>(null);
@@ -68,7 +71,7 @@ export function SessionTimerProvider({ children }: { children: ReactNode }) {
   const num = (s: Session) => numbers.get(s.id) ?? s.sequence;
   const today = toDateKey(now ?? new Date());
 
-  const { split } = useSessionLifecycle({ ready: app.status === "ready", sessions, timebox: entries, saveSession: app.sessions.save, saveCompletion: app.completions.save });
+  const { split, released, dismissReleased } = useSessionLifecycle(app);
 
   // Remember today's skip order and pinned session across reloads (only session ids are stored).
   const [queueLoaded, setQueueLoaded] = useState(false);
@@ -91,15 +94,14 @@ export function SessionTimerProvider({ children }: { children: ReactNode }) {
     }
   }, [queueLoaded, skipped, pinnedId]);
 
-  // Today's queue: the pinned session, then started ones, then the rest by time, then skipped ones.
-  const scheduledToday = entries.filter((e) => e.date === today && e.sourceType === "session");
-  const pending: TimerItem[] = [...scheduledToday]
-    .sort((a, b) => a.startMinute - b.startMinute)
-    .flatMap((entry) => {
-      const session = sessions.find((s) => s.id === entry.sourceId);
-      const owner = owners.find((o) => o.id === session?.ownerId);
-      return session && owner && session.status !== "completed" ? [{ entry, session, owner }] : [];
-    });
+  // Today's queue: today's sessions, started ones whatever their date, and yesterday's until the day-end cutoff.
+  const scheduledToday = queueEntries(entries, sessions, today, now ?? new Date());
+  const pending: TimerItem[] = scheduledToday.flatMap((entry) => {
+    const session = sessions.find((s) => s.id === entry.sourceId);
+    const owner = owners.find((o) => o.id === session?.ownerId);
+    return session && owner && session.status !== "completed" ? [{ entry, session, owner }] : [];
+  });
+
   const pinnedSession = sessions.find((s) => s.id === pinnedId && s.status !== "completed");
   const pinnedOwner = owners.find((o) => o.id === pinnedSession?.ownerId);
   const pinnedItem: TimerItem | undefined =
@@ -248,6 +250,7 @@ export function SessionTimerProvider({ children }: { children: ReactNode }) {
   const value: SessionTimer = {
     current, next, queueLength: queue.length, scheduledToday: scheduledToday.length, sameTaskNext, numbers, num,
     running, due, paused, idle, live, total, frac, workedNow, toggle, finish, keepWorking, goNextOfTask, skipSession,
+    today, released, dismissReleased,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

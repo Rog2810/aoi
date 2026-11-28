@@ -11,6 +11,7 @@ export class AoiDb extends Dexie {
   timebox!: Table<TimeboxEntry, string>;
   layouts!: Table<{ id: string; config: LayoutConfig }, string>;
   projects!: Table<Project, string>;
+  missed!: Table<MissedSession, string>;
 
   constructor(name = "aoi") {
     super(name);
@@ -34,6 +35,7 @@ export class AoiDb extends Dexie {
           delete s.taskId;
         }),
       );
+    this.version(4).stores({ missed: "id, ownerId, date" });
   }
 }
 
@@ -67,6 +69,7 @@ export const createRepositories = (db: AoiDb = new AoiDb()) => ({
   completions: repo(db.completions),
   timebox: repo(db.timebox),
   projects: repo(db.projects),
+  missed: repo(db.missed),
 });
 
 let shared: ReturnType<typeof createRepositories> | undefined;

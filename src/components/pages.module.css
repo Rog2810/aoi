@@ -75,3 +75,5 @@
 
 .card { overflow-wrap: anywhere; }
 .iconBtn { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; min-height: 0; padding: 0; }
+
+.segMissed { border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 3px, var(--muted) 3px 4px); }

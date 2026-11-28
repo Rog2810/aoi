@@ -42,6 +42,7 @@ export default function SessionManagerWidget() {
       <div>
         {i.entry ? `${formatMinute(i.entry.startMinute)}–${formatMinute(i.entry.endMinute)}` : "Not on today's timebox"} · {i.session.plannedMinutes} min planned
         {i.session.completedMinutes > 0 ? `, ${i.session.completedMinutes} done` : ""}
+        {i.entry ? `${i.entry.date < t.today ? "Yesterday " : ""}${formatMinute(i.entry.startMinute)}–${formatMinute(i.entry.endMinute)}` : "Not on today's timebox"} · {i.session.plannedMinutes} min planned
       </div>
     </>
   );
