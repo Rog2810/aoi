@@ -85,3 +85,14 @@ export interface Project extends Versioned {
   status: "active" | "paused" | "archived";
   weeklyTargetMinutes?: number; // optional; when absent nothing about a target is shown
 }
+
+/** A session that was planned for a day and never started. Kept for adherence reports. It is NOT a completion. */
+export interface MissedSession extends Versioned {
+  sessionId: string;
+  ownerType: "task" | "project";
+  ownerId: string;
+  date: string; // the planned local date
+  startMinute: number;
+  endMinute: number;
+  plannedMinutes: number;
+}

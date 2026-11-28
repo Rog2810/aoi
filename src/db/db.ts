@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { CompletionRecord, Reminder, Session, Task, TimeboxEntry, Project } from "../domain/types";
+import type { CompletionRecord, Reminder, Session, Task, TimeboxEntry, Project, MissedSession } from "../domain/types";
 import type { LayoutConfig } from "../lib/shareCode";
 
 /** Only this file knows about Dexie/IndexedDB. Everything else talks to repositories. */
